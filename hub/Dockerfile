@@ -1,4 +1,4 @@
-# ── TelcoGuard Hub Server ──
+# ── TRSMS Hub Server ──
 # Multi-stage build:
 #   Stage 1 — Build the React dashboard (Vite)
 #   Stage 2 — Run Express + Socket.IO, serve the built dashboard as static files

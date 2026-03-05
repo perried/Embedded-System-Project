@@ -1,8 +1,8 @@
 #!/usr/bin/env python3
 """
-TelcoGuard — Socket.IO Sensor Data Transmitter
-================================================
-Connects to the TelcoGuard hub server via Socket.IO (/pi namespace)
+TRSMS — Socket.IO Sensor Data Transmitter
+==========================================
+Connects to the TRSMS hub server via Socket.IO (/pi namespace)
 and streams sensor data every READ_INTERVAL seconds.
 
 Also listens for threshold updates pushed from the dashboard.
@@ -77,7 +77,7 @@ def simulate_sensor_data() -> dict:
 
 class SocketTransmitter:
     """
-    Socket.IO client that connects to the TelcoGuard hub and streams sensor data.
+    Socket.IO client that connects to the TRSMS hub and streams sensor data.
     Can be run as a background thread or standalone.
     """
 
@@ -202,7 +202,7 @@ class SocketTransmitter:
 
 def main():
     """Standalone entry point for testing."""
-    parser = argparse.ArgumentParser(description="TelcoGuard Socket.IO Transmitter")
+    parser = argparse.ArgumentParser(description="TRSMS Socket.IO Transmitter")
     parser.add_argument(
         "--simulate",
         action="store_true",
@@ -211,7 +211,7 @@ def main():
     args = parser.parse_args()
 
     mode = "SIMULATE" if args.simulate else "REAL"
-    print(f"[BOOT] TelcoGuard Socket.IO Transmitter starting")
+    print(f"[BOOT] TRSMS Socket.IO Transmitter starting")
     print(f"       Mode:      {mode}")
     print(f"       Hub:       {SOCKET_URL}")
     print(f"       Site ID:   {SITE_ID}")

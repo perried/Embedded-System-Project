@@ -28,7 +28,7 @@ SMOKE_CRITICAL = 0.5       # digital — smoke critical threshold
 READ_INTERVAL = 2      # Seconds between sensor readings
 
 # ── Backend Configuration ─────────────────────────────────────────────
-API_KEY = "telco-guard"
+API_KEY = "trsms-key"
 SITE_ID = "site-001"
 SITE_NAME = "North Ridge Tower"     # Display name for this site
 SITE_LOCATION = "40.71° N, 74.00° W"  # GPS / description

@@ -1,4 +1,4 @@
--- TelcoGuard PostgreSQL Schema
+-- TRSMS PostgreSQL Schema
 -- ==============================
 -- Run once to initialise the database tables.
 -- This script is executed automatically by Docker on first start

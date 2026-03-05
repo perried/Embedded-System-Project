@@ -1,7 +1,7 @@
 {
-    "name": "telco-guard-backend",
+    "name": "trsms-hub",
     "version": "1.0.0",
-    "description": "TelcoGuard REST API — receives sensor data and serves the dashboard",
+    "description": "TRSMS Hub — Express + Socket.IO server for Telecom Remote Site Monitoring System",
     "type": "module",
     "main": "src/index.js",
     "scripts": {

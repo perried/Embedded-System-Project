@@ -1,4 +1,4 @@
-# TelcoGuard — Hub-and-Spoke WebSocket Architecture Plan
+# TRSMS — Hub-and-Spoke WebSocket Architecture Plan
 
 ## Overview
 
@@ -44,7 +44,7 @@ Replace the current one-way HTTP POST transmitter with a **bidirectional Socket.
 | Pi → Server | HTTP POST every 30s (`services/transmitter.py`) | Socket.IO client, emits `sensor:data` every 2s |
 | Server → Dashboard | REST polling every 10s (`GET /api/sites`) | Socket.IO push — real-time `site:data` events |
 | Server → Pi | None (one-way) | Socket.IO push — `thresholds:update` events |
-| Site registration | Manual (pre-create in Supabase) | Auto-register on Pi connect (upsert) |
+| Site registration | Manual (pre-create in DB) | Auto-register on Pi connect (upsert) |
 | Thresholds on Pi | Hardcoded `config.py` | Defaults in `config.py`, overridable from dashboard, persisted locally as `thresholds.json` |
 | Thresholds on Server | Hardcoded in `ingest.js` and `sites.js` | Per-site JSONB column in `telco_sites`, editable from dashboard |
 | Status detection | 5-minute timeout heuristic | Instant — WS disconnect = offline |
@@ -55,7 +55,7 @@ Replace the current one-way HTTP POST transmitter with a **bidirectional Socket.
 - **LCD display configuration** (`actuators/lcd_display.py`, `LCD_I2C_ADDR`, `LCD_COLS`, `LCD_ROWS`) — untouched
 - **Sensor reading code** (`sensors/dht_sensor.py`, `sensors/mq2_sensor.py`) — untouched
 - **Actuator control** (`actuators/buzzer.py`, `actuators/fan.py`) — untouched
-- **Supabase** for persistence — still used, just adding a `thresholds` column
+- **PostgreSQL** for persistence — `telco_sites` and `telco_sensor_readings` tables
 - **Firebase push notifications** — still triggered server-side
 - **REST routes** (`/api/ingest`, `/api/sites`) — kept for backward compat / initial hydration
 
@@ -82,7 +82,7 @@ Replace the current one-way HTTP POST transmitter with a **bidirectional Socket.
  Dashboard UI                Server (Hub)              Raspberry Pi
  ────────────                ───────────               ─────────────
  User edits thresholds
-  → emit thresholds:set ────→ Save to Supabase
+  → emit thresholds:set ────→ Save to PostgreSQL
                               telco_sites.thresholds
                                → emit thresholds:update ───→ Save to thresholds.json
                                                              Update in-memory
@@ -96,7 +96,7 @@ Replace the current one-way HTTP POST transmitter with a **bidirectional Socket.
    3. On server connect → receive thresholds:update from DB → overwrite local
 
  On server restart:
-   Thresholds survive in Supabase → pushed to Pi on reconnect
+   Thresholds survive in PostgreSQL → pushed to Pi on reconnect
 ```
 
 ---
@@ -152,7 +152,7 @@ Handles the `/pi` namespace:
 Handles the `/dashboard` namespace:
 - **`connection`**: Emit `sites:list` with all sites + connected status from Pi handler map.
 - **`site:subscribe`**: Join room for that siteId.
-- **`thresholds:set`**: Persist to `telco_sites.thresholds` in Supabase. Forward `thresholds:update` to target Pi via `/pi` namespace.
+- **`thresholds:set`**: Persist to `telco_sites.thresholds` in PostgreSQL. Forward `thresholds:update` to target Pi via `/pi` namespace.
 - Receives broadcasts from Pi handler (site:data, site:status).
 
 #### 1.5 Update `frontend/src/index.js`
@@ -192,7 +192,7 @@ Add `python-socketio[client]` to `requirements.txt`.
 - Run as a background thread (not subprocess)
 
 #### 2.4 Update `config.py`
-- Add `SOCKET_URL` (e.g. `https://telco-guard.onrender.com`)
+- Add `SOCKET_URL` (e.g. `http://<VM-EXTERNAL-IP>:3001`)
 - Add `SITE_NAME` and `SITE_LOCATION` for auto-registration
 - Keep existing threshold constants as defaults only
 
@@ -296,7 +296,7 @@ cd frontend/templates && npm install socket.io-client
 - [ ] Disconnect one Pi — turns grey/offline in sidebar within seconds (not 5 minutes)
 - [ ] Edit thresholds from dashboard for a connected Pi — Pi receives them, writes `thresholds.json`, applies them (e.g. fan threshold changes)
 - [ ] Restart Pi — loads thresholds from `thresholds.json` (not defaults)
-- [ ] Restart server — thresholds still in Supabase, pushed to Pi on reconnect
+- [ ] Restart server — thresholds still in PostgreSQL, pushed to Pi on reconnect
 - [ ] Sensor data appears in dashboard in real-time (~2s latency, no 10s polling)
 - [ ] REST routes still work (`GET /api/sites`, `POST /api/ingest`)
 - [ ] Firebase push notifications still fire for warning/critical states

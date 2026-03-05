@@ -36,11 +36,11 @@ import { motion, AnimatePresence } from 'framer-motion';
 export default function App() {
   const [sites, setSites] = useState<SiteStatus[]>([]);
   const [selectedSiteId, setSelectedSiteId] = useState<string>(() => {
-    return localStorage.getItem('telcoguard_selected_site_id') || '';
+    return localStorage.getItem('trsms_selected_site_id') || '';
   });
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [theme, setTheme] = useState<'light' | 'dark'>(() =>
-    (localStorage.getItem('telcoguard_theme') as 'light' | 'dark') || 'dark'
+    (localStorage.getItem('trsms_theme') as 'light' | 'dark') || 'dark'
   );
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
   const [loading, setLoading] = useState(true);
@@ -63,10 +63,10 @@ export default function App() {
       if (!smokeAlertActive) setIsSilenced(false);
       setHasSmokeAlert(smokeAlertActive);
 
-      if (data.length > 0 && !localStorage.getItem('telcoguard_selected_site_id')) {
+      if (data.length > 0 && !localStorage.getItem('trsms_selected_site_id')) {
         const firstId = data[0].id;
         setSelectedSiteId(firstId);
-        localStorage.setItem('telcoguard_selected_site_id', firstId);
+        localStorage.setItem('trsms_selected_site_id', firstId);
       }
     } catch (error) {
       console.error('Failed to fetch sites:', error);
@@ -164,7 +164,7 @@ export default function App() {
     const root = window.document.documentElement;
     root.classList.remove('light', 'dark');
     root.classList.add(theme);
-    localStorage.setItem('telcoguard_theme', theme);
+    localStorage.setItem('trsms_theme', theme);
   }, [theme]);
 
   useEffect(() => {
@@ -255,7 +255,7 @@ export default function App() {
         selectedSiteId={selectedSiteId}
         onSelectSite={(id) => {
           setSelectedSiteId(id);
-          localStorage.setItem('telcoguard_selected_site_id', id);
+          localStorage.setItem('trsms_selected_site_id', id);
           setIsSidebarOpen(false);
         }}
         isOpen={isSidebarOpen}

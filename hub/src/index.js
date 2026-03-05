@@ -59,7 +59,7 @@ app.get('*', (_req, res) => {
     if (err) {
       res.status(200).send(`
         <html><body style="font-family:sans-serif;text-align:center;padding:4rem">
-          <h1>TelcoGuard Hub</h1>
+          <h1>TRSMS Hub</h1>
           <p>API is running. Dashboard not built yet.</p>
           <code>GET /api/sites</code> · <code>WS /pi</code> · <code>WS /dashboard</code>
         </body></html>
@@ -70,7 +70,7 @@ app.get('*', (_req, res) => {
 
 // ── Start (use server.listen, not app.listen, for Socket.IO) ──────────
 server.listen(port, () => {
-  console.log(`TelcoGuard hub running at http://localhost:${port}`);
+  console.log(`TRSMS hub running at http://localhost:${port}`);
   console.log(`  POST /api/ingest  — Raspberry Pi sensor data (legacy REST)`);
   console.log(`  GET  /api/sites   — Dashboard data`);
   console.log(`  WS   /pi          — Raspberry Pi Socket.IO namespace`);

@@ -6,9 +6,9 @@ dotenv.config();
 const pool = new pg.Pool({
   host:     process.env.DB_HOST     || 'localhost',
   port:     parseInt(process.env.DB_PORT || '5432'),
-  database: process.env.DB_NAME     || 'telcoguard',
-  user:     process.env.DB_USER     || 'telcoguard',
-  password: process.env.DB_PASSWORD || 'telcoguard',
+  database: process.env.DB_NAME     || 'trsms',
+  user:     process.env.DB_USER     || 'trsms',
+  password: process.env.DB_PASSWORD || 'trsms',
   max:      20,
   idleTimeoutMillis: 30000,
 });

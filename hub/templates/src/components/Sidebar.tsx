@@ -133,7 +133,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
 
         <div className="p-4 border-t border-[var(--border-subtle)] bg-[var(--border-subtle)]/30 flex justify-center">
           <span className="text-[10px] font-mono text-[var(--text-muted)] uppercase tracking-widest opacity-40">
-            TelcoGuard V2
+            TRSMS
           </span>
         </div>
       </aside>

@@ -1,3 +1,14 @@
+/**
+ * SensorCard.tsx
+ * ==============
+ * Displays a single sensor's current reading, trend indicator, and historical chart.
+ *
+ * - Temperature & Humidity: Renders an area chart (Recharts) with threshold reference line
+ * - Smoke: Renders a binary status timeline (green = clear, red = alarm) with last incident info
+ *
+ * Visual state changes dynamically based on whether the current value exceeds its threshold.
+ */
+
 import React, { useMemo } from 'react';
 import {
   ResponsiveContainer,

@@ -1,3 +1,13 @@
+/**
+ * AlertPanel.tsx
+ * ==============
+ * Scrollable panel displaying all active sensor alerts across monitored sites.
+ *
+ * Alerts are generated client-side by comparing current sensor values against
+ * their thresholds. Each alert shows site name, severity (warning/critical),
+ * descriptive message, and timestamp.
+ */
+
 import React from 'react';
 import { Alert } from '../types';
 import { AlertCircle, AlertTriangle, CheckCircle2, Clock, X } from 'lucide-react';

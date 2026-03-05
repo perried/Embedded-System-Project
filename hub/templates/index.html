@@ -1,0 +1,33 @@
+<!doctype html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <link id="favicon" rel="icon" type="image/svg+xml"
+    href="https://uxwing.com/wp-content/themes/uxwing/download/internet-network-technology/signal-tower-icon.svg" />
+  <title>TelcoGuard | Site Monitoring</title>
+  <script>
+    const favicon = document.getElementById('favicon');
+    const darkFavicon = 'https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcQgxqMcLnCsAYeb5yMsDZwS_A6Nyf5lrQq1IA&s';
+    const lightFavicon = 'https://uxwing.com/wp-content/themes/uxwing/download/internet-network-technology/signal-tower-icon.svg';
+
+    function updateFavicon() {
+      if (window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches) {
+        favicon.href = darkFavicon;
+      } else {
+        favicon.href = lightFavicon;
+      }
+    }
+
+    window.matchMedia('(prefers-color-scheme: dark)').addEventListener('change', updateFavicon);
+    updateFavicon();
+  </script>
+</head>
+
+<body>
+  <div id="root"></div>
+  <script type="module" src="/src/main.tsx"></script>
+</body>
+
+</html>

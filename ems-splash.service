@@ -1,0 +1,18 @@
+[Unit]
+Description=TERMS Boot Splash (LCD boot messages)
+DefaultDependencies=no
+After=local-fs.target
+Before=network-online.target ems.service
+
+[Service]
+Type=oneshot
+User=groupmmsp
+WorkingDirectory=/home/groupmmsp/ems
+Environment=PYTHONUNBUFFERED=1
+ExecStart=/home/groupmmsp/ems/.venv/bin/python3 /home/groupmmsp/ems/boot_splash.py
+TimeoutStartSec=120
+StandardOutput=journal
+StandardError=journal
+
+[Install]
+WantedBy=multi-user.target

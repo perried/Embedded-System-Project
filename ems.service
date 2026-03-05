@@ -1,0 +1,20 @@
+[Unit]
+Description=Telecom Equipment Room Monitor
+After=network-online.target ems-splash.service
+Wants=network-online.target
+Requires=ems-splash.service
+
+[Service]
+Type=simple
+User=groupmmsp
+WorkingDirectory=/home/groupmmsp/ems
+Environment=PYTHONUNBUFFERED=1
+ExecStartPre=/bin/sleep 5
+ExecStart=/home/groupmmsp/ems/.venv/bin/python3 /home/groupmmsp/ems/main.py
+Restart=on-failure
+RestartSec=10
+StandardOutput=journal
+StandardError=journal
+
+[Install]
+WantedBy=multi-user.target

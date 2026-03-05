@@ -1,0 +1,21 @@
+# Dependencies
+node_modules/
+hub/node_modules/
+hub/templates/node_modules/
+
+# Environment
+.env
+.env.local
+
+# Python
+__pycache__/
+*.pyc
+*.pyo
+thresholds.json
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Docker volumes (never commit)
+pg_data/

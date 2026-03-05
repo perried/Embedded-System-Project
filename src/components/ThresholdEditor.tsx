@@ -15,6 +15,7 @@
 
 import React, { useState, useEffect } from 'react';
 import { SiteStatus, Thresholds } from '../types';
+import { cn } from '../lib/utils';
 import {
   emitThresholdsSet,
   onThresholdsSaved,

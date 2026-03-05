@@ -1,43 +1,81 @@
 # Telecom Remote Site Monitoring System (TRSMS)
 
-A hub-and-spoke environmental monitoring system for telecom equipment rooms. Raspberry Pi devices collect sensor data (temperature, humidity, smoke) and stream it in real-time to a central dashboard via Socket.IO WebSockets.
+## 1. Introduction
 
-## Architecture
+Telecommunication networks depend on a large number of remote equipment rooms spread across wide geographic areas. The shift toward **Software-Defined Networking (SDN)**, **Network Function Virtualization (NFV)**, and **Edge Computing** has replaced bulky, distributed hardware with high-density server racks. While this improves network performance, it has dramatically increased thermal density — a single modern rack produces more concentrated heat than several rooms of legacy equipment.
+
+These remote sites are typically **unmanned**. A cooling failure can cause temperatures to spike within minutes, destroying expensive components or triggering emergency shutdowns. Existing monitoring approaches rely on **disconnected local alarms** or **SMS-only notifications** (Mwagi, 2016; Elago & Francis, 2017), which suffer from:
+
+- **No centralized visibility** — each site operates in isolation with no aggregated view for the NOC
+- **Unreliable alerting** — SMS notifications fail in low-signal areas or during GSM congestion
+- **No historical data** — without long-term logging, trend analysis (e.g. detecting a gradually failing cooling unit) is impossible
+- **Reactive-only response** — operators learn about failures only after equipment is already damaged
+
+## 2. Problem Statement
+
+Based on 3GPP TS standards, infrastructure health monitoring at remote sites remains a critical blind spot. The Central Office often has no real-time awareness of environmental conditions until equipment overheats and services go down — causing SLA violations, customer churn, and costly emergency repairs.
+
+## 3. Proposed Solution
+
+This project implements a **Centralized Environmental Management System (CEMS)** using a **star topology** architecture. It addresses the gaps in existing research by providing:
+
+| Gap in Existing Solutions | How TRSMS Addresses It |
+|---------------------------|----------------------|
+| SMS-only alerts (unreliable) | Persistent WebSocket connection + web dashboard + Firebase push notifications |
+| No centralized view | Single NOC dashboard aggregates all sites in real-time |
+| No historical data | PostgreSQL database stores all readings for trend analysis |
+| Point-to-point only | Hub-and-spoke model supports unlimited concurrent sites |
+| Reactive maintenance | Historical trend data enables **preventive maintenance** — identify degrading equipment before failure |
+| No remote configuration | Dashboard allows remote threshold adjustment, pushed instantly to site nodes |
+
+The system consists of two subsystems:
+
+- **Site Nodes** — Raspberry Pi units at each equipment room with sensors (temperature, humidity, smoke/fire) and local actuators (fan, buzzer, LCD) that respond immediately to hazards without waiting for central instructions
+- **NOC Dashboard** — A centralized web interface that aggregates live and historical data from every site into a single visual interface
+
+## 4. System Architecture
 
 ```
     ┌──────────┐     ┌──────────┐     ┌──────────┐
-    │  Pi #1   │     │  Pi #2   │     │  Pi #3   │
-    │ (Site A) │     │ (Site B) │     │ (Site C) │
+    │  Site A   │     │  Site B   │     │  Site C   │
+    │  (Pi #1) │     │  (Pi #2) │     │  (Pi #3) │
     └────┬─────┘     └────┬─────┘     └────┬─────┘
          │ WS /pi         │ WS /pi         │ WS /pi
          └────────────────┼────────────────┘
                           │
                   ┌───────┴────────┐
-                  │  Hub Server    │
+                  │   Hub Server   │
                   │  (Express +    │
                   │  Socket.IO +   │
                   │  PostgreSQL)   │
                   └───────┬────────┘
                           │ WS /dashboard
                   ┌───────┴────────┐
-                  │ React Dashboard│
-                  │ (served from   │
+                  │ NOC Dashboard  │
+                  │ (React SPA,    │
                   │  same origin)  │
                   └────────────────┘
 ```
 
-## Features
+**Data flow:**
+1. Each Pi reads sensors every 2 seconds and streams data to the hub via Socket.IO WebSocket
+2. The hub persists readings to PostgreSQL, derives site status, and broadcasts to all connected dashboards
+3. The dashboard displays real-time gauges, historical charts, and alerts — NOC operators can adjust thresholds remotely
+4. Threshold changes are pushed instantly from dashboard → hub → target Pi, where they take effect on the next sensor cycle
 
-- **Real-time monitoring** — sensor data streamed every 2 seconds via WebSocket
-- **Multi-site support** — connect unlimited Pi devices simultaneously
-- **Automatic site registration** — new Pi auto-registers on first connection
-- **Remote threshold control** — adjust fan/alarm thresholds from the dashboard
-- **Local actuator control** — fan, buzzer, and LCD driven directly by the Pi
-- **Data persistence** — PostgreSQL stores all readings for trend analysis
-- **Instant status** — online/offline detected via WebSocket disconnect (no polling)
-- **Push notifications** — Firebase alerts for warning/critical states
+## 5. Features
 
-## Project Structure
+- **Real-time streaming** — sensor data every 2 seconds via persistent WebSocket (not polling)
+- **Multi-site aggregation** — unlimited Pi nodes connect to a single hub (star topology)
+- **Automatic site registration** — new Pi auto-registers on first connection (no manual provisioning)
+- **Local intelligence** — fan and buzzer activate immediately at the site without waiting for hub instructions
+- **Remote threshold control** — NOC operators adjust per-site thresholds from the dashboard
+- **Historical trend analysis** — PostgreSQL stores all readings; Recharts visualizes trends over time
+- **Instant status detection** — online/offline determined by WebSocket disconnect (not 5-minute timeout)
+- **Push notifications** — Firebase Cloud Messaging alerts for warning/critical states
+- **Preventive maintenance** — historical data reveals gradual equipment degradation before failure
+
+## 6. Project Structure
 
 ```
 ems/
@@ -77,8 +115,8 @@ ems/
     │   ├── index.js         # Express server + Socket.IO setup + static serving
     │   ├── db.js            # PostgreSQL connection pool
     │   ├── routes/
-    │   │   ├── ingest.js    # POST /api/ingest (legacy REST)
-    │   │   └── sites.js     # GET /api/sites (initial hydration)
+    │   │   ├── ingest.js    # POST /api/ingest (legacy REST fallback)
+    │   │   └── sites.js     # GET /api/sites (initial hydration with history)
     │   ├── socket/
     │   │   ├── piHandler.js         # /pi namespace — Pi connections
     │   │   └── dashboardHandler.js  # /dashboard namespace — browser clients
@@ -86,23 +124,23 @@ ems/
     │       ├── statusService.js     # Status derivation logic
     │       └── notificationService.js # Firebase push notifications
     │
-    └── templates/           # ── React Dashboard (built by Docker) ──
+    └── templates/           # ── React NOC Dashboard (built by Docker) ──
         ├── package.json
         ├── vite.config.ts
         └── src/
             ├── App.tsx
             ├── components/
-            │   ├── Sidebar.tsx
-            │   ├── SensorCard.tsx
-            │   ├── AlertPanel.tsx
-            │   ├── AlarmBanner.tsx
-            │   └── ThresholdEditor.tsx
+            │   ├── Sidebar.tsx          # Multi-site sidebar with live status
+            │   ├── SensorCard.tsx       # Real-time gauge + sparkline chart
+            │   ├── AlertPanel.tsx       # Active alerts list
+            │   ├── AlarmBanner.tsx      # Full-screen smoke/fire alarm
+            │   └── ThresholdEditor.tsx  # Remote threshold configuration
             └── lib/
                 ├── socket.ts    # Socket.IO client singleton
                 └── utils.ts
 ```
 
-## Wiring (Raspberry Pi)
+## 7. Hardware Wiring
 
 ```
                     Raspberry Pi GPIO
@@ -120,26 +158,28 @@ ems/
 
 | Component | VCC | GND | Signal |
 |-----------|-----|-----|--------|
-| DHT11 | 3.3V | GND | GPIO 4 (+ 10kΩ pull-up) |
-| MQ2 | 5V | GND | DO → GPIO 22 |
-| Buzzer | — | GND | (+) → GPIO 17 (active-LOW) |
-| Fan Relay | 5V | GND | IN → GPIO 27 |
+| DHT11 (Temperature/Humidity) | 3.3V | GND | GPIO 4 (+ 10kΩ pull-up) |
+| MQ2 (Smoke/Gas) | 5V | GND | DO → GPIO 22 |
+| Active Buzzer | — | GND | (+) → GPIO 17 (active-LOW) |
+| Fan Relay Module | 5V | GND | IN → GPIO 27 |
 
-## Actuator Logic
+## 8. Actuator Logic (Local Intelligence)
 
-| Condition | Fan | Buzzer |
-|-----------|-----|--------|
-| Temperature ≥ threshold | **ON** | OFF |
-| Smoke detected (MQ2 DO = LOW) | **ON** | **ON** |
-| Normal | OFF | OFF |
+Site nodes respond to hazards **immediately** without waiting for hub instructions:
 
-Thresholds are configurable from the dashboard or in `config.py`.
+| Condition | Fan | Buzzer | Rationale |
+|-----------|-----|--------|-----------|
+| Temperature ≥ threshold | **ON** | OFF | Active cooling to prevent thermal damage |
+| Smoke/gas detected | **ON** | **ON** | Ventilation + audible alarm for fire safety |
+| Normal | OFF | OFF | — |
+
+Thresholds are configurable remotely from the NOC dashboard or locally in `config.py`.
 
 ---
 
-## Setup
+## 9. Setup & Deployment
 
-### Pi Setup
+### 9.1 Site Node (Raspberry Pi)
 
 ```bash
 # Install system dependencies
@@ -150,8 +190,7 @@ python3 -m venv .venv
 source .venv/bin/activate
 pip install -r requirements.txt
 
-# Configure site identity and hub URL
-# Edit config.py:
+# Configure site identity and hub URL in config.py:
 #   SITE_ID = "site-001"
 #   SITE_NAME = "North Ridge Tower"
 #   SOCKET_URL = "http://<VM-EXTERNAL-IP>:3001"
@@ -159,12 +198,12 @@ pip install -r requirements.txt
 # Run manually
 python main.py
 
-# Or enable as systemd service
+# Or enable as systemd service (auto-start on boot)
 sudo systemctl enable ems
 sudo systemctl start ems
 ```
 
-### Hub Deployment (Google Compute Engine)
+### 9.2 Hub Server (Google Compute Engine)
 
 ```bash
 # Clone only the hub folder
@@ -188,7 +227,7 @@ curl http://localhost:3001/health
 
 Dashboard is available at `http://<VM-EXTERNAL-IP>:3001`
 
-### Firewall (GCE)
+### 9.3 Firewall (GCE)
 
 ```bash
 gcloud compute firewall-rules create allow-trsms \
@@ -197,7 +236,7 @@ gcloud compute firewall-rules create allow-trsms \
 
 ---
 
-## Testing Individual Components
+## 10. Testing Individual Components
 
 ```bash
 python test_mq2.py         # MQ2 digital output (30s read loop)
@@ -210,15 +249,21 @@ python -m actuators.buzzer
 python -m actuators.fan
 ```
 
-## Tech Stack
+## 11. Tech Stack
 
 | Layer | Technology |
 |-------|-----------|
 | Sensors | DHT11, MQ2, gpiozero, adafruit-circuitpython-dht |
-| Actuators | Relay (fan), active buzzer, 20x4 I2C LCD |
+| Actuators | Relay (fan), active buzzer, 20x4 I2C LCD (PCF8574 backpack) |
 | Pi Transport | python-socketio (WebSocket client) |
-| Hub Server | Node.js, Express, Socket.IO |
+| Hub Server | Node.js 20, Express, Socket.IO |
 | Database | PostgreSQL 16 (Docker) |
-| Dashboard | React 19, Vite, TypeScript, Tailwind CSS v4, Recharts |
-| Deployment | Docker Compose on GCE |
+| Dashboard | React 19, Vite 6, TypeScript, Tailwind CSS v4, Recharts |
+| Deployment | Docker Compose on Google Compute Engine |
 | Notifications | Firebase Cloud Messaging |
+
+## 12. References
+
+- 3GPP TS 32.300 — Telecommunication Management; Configuration Management (CM)
+- Mwagi, A. (2016). *Overlay Monitoring System for Telecom Equipment Rooms* — SMS-based fault detection
+- Elago, S. & Francis, J. (2017). *Real-Time Monitoring System for DSLAM Equipment Rooms* — Local LCD + SMS alerts

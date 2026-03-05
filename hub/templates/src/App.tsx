@@ -43,7 +43,7 @@ import {
   Flame,
   SlidersHorizontal,
 } from 'lucide-react';
-import { motion, AnimatePresence } from 'framer-motion';
+import { motion, AnimatePresence } from 'motion/react';
 
 export default function App() {
   // ── Persist selected site and theme in localStorage ──

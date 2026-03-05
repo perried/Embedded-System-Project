@@ -12,6 +12,7 @@ Run:  python main.py
 Stop: Ctrl+C (GPIO cleaned up automatically)
 """
 
+# ── Standard library ──
 import sys
 import time
 import json
@@ -19,16 +20,17 @@ import logging
 import os
 from datetime import datetime
 
+# ── Project modules ──
 import config
-from sensors.dht_sensor import DHTSensor
-from sensors.mq2_sensor import MQ2Sensor
-from actuators.buzzer import Buzzer
-from actuators.fan import Fan
-from actuators.lcd_display import LCDDisplay
-from thresholds import get_thresholds
-from services.transmitter import SocketTransmitter
+from sensors.dht_sensor import DHTSensor       # DHT11 temperature & humidity
+from sensors.mq2_sensor import MQ2Sensor       # MQ-2 gas/smoke digital output
+from actuators.buzzer import Buzzer             # Active buzzer (gas alert only)
+from actuators.fan import Fan                   # Exhaust fan via relay module
+from actuators.lcd_display import LCDDisplay    # 20x4 I2C LCD
+from thresholds import get_thresholds           # Thread-safe threshold manager
+from services.transmitter import SocketTransmitter  # Socket.IO hub client
 
-# Setup basic logging
+# ── Logging ──
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
 logger = logging.getLogger(__name__)
 
@@ -114,18 +116,19 @@ def main():
     try:
         while True:
             # ── Read sensors ──────────────────────────────────────
+            # DHT11 returns cached values on checksum error to avoid actuator flapping
             dht_data = dht.read()
             mq2_data = mq2.read()
 
-            temp = dht_data["temperature"]
-            humidity = dht_data["humidity"]
-            gas_detected = mq2_data["gas_detected"]
+            temp = dht_data["temperature"]       # °C or None if no read yet
+            humidity = dht_data["humidity"]       # %RH or None
+            gas_detected = mq2_data["gas_detected"]  # True = smoke/gas above MQ2 threshold
 
-            # Write sensor data to file for transmitter
+            # Write sensor data to /tmp/sensor_data.json for the transmitter thread to read
             write_sensor_data(temp, humidity, gas_detected)
 
             # ── Actuator logic ────────────────────────────────────
-            # Fetch latest thresholds (may be updated by dashboard)
+            # Fetch latest thresholds — may have been updated remotely from dashboard
             thresholds = get_thresholds()
             fan_threshold = thresholds.get('temp_fan_on', config.TEMP_FAN_ON)
 
@@ -159,20 +162,20 @@ def main():
         print("\n\nShutting down...")
 
     finally:
-        # Clean up all hardware
+        # ── Graceful shutdown — release all GPIO and stop background threads ──
         buzzer.turn_off()
         fan.turn_off()
         lcd.show_message("TERMS",
                          "Equipment Room Monitor",
                          "",
                          "Shutting down...")
-        buzzer.cleanup()
-        fan.cleanup()
-        lcd.cleanup()
-        dht.cleanup()
-        mq2.cleanup()
+        buzzer.cleanup()   # Release buzzer GPIO
+        fan.cleanup()      # De-energise relay, release GPIO
+        lcd.cleanup()      # Clear display, release I2C
+        dht.cleanup()      # Release DHT11 resources
+        mq2.cleanup()      # Release MQ2 GPIO
         
-        # Stop Socket.IO transmitter
+        # Stop Socket.IO transmitter background thread
         if 'transmitter' in locals() and transmitter:
             logger.info("Stopping Socket.IO transmitter...")
             transmitter.stop()

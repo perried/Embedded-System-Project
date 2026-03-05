@@ -1,6 +1,20 @@
+/**
+ * ThresholdEditor.tsx
+ * ===================
+ * Panel for remotely editing a site's sensor thresholds from the NOC dashboard.
+ *
+ * Emits `thresholds:set` via Socket.IO to the hub server, which persists
+ * the values to PostgreSQL and forwards them to the target Raspberry Pi.
+ *
+ * Shows real-time feedback:
+ * - "Saving..." spinner while waiting for server confirmation
+ * - "Saved" badge when the server confirms persistence
+ * - "Pi confirmed" badge when the Pi acknowledges receipt
+ * - "Pi Offline — will apply on next connect" when the Pi is disconnected
+ */
+
 import React, { useState, useEffect } from 'react';
 import { SiteStatus, Thresholds } from '../types';
-import { cn } from '../lib/utils';
 import {
   emitThresholdsSet,
   onThresholdsSaved,

@@ -1,16 +1,37 @@
+# ems-splash.service — TRSMS Boot Splash Service
+# ================================================
+# Displays boot progress messages on the 20x4 I2C LCD during startup.
+# Runs early in the boot sequence (before network), then exits.
+#
+# Boot order: local-fs → ems-splash (this) → network-online → ems (main app)
+
 [Unit]
-Description=TERMS Boot Splash (LCD boot messages)
+Description=TRSMS Boot Splash (LCD boot messages)
+
+# Run very early — skip default systemd dependencies
 DefaultDependencies=no
+
+# Only need filesystem mounted (for Python + scripts)
 After=local-fs.target
+
+# Must complete before network target and main app
 Before=network-online.target ems.service
 
 [Service]
+# oneshot = runs once and exits (not a long-running daemon)
 Type=oneshot
 User=groupmmsp
 WorkingDirectory=/home/groupmmsp/ems
+
+# Force unbuffered output for immediate journal logging
 Environment=PYTHONUNBUFFERED=1
+
+# Run the splash script using the project's virtual environment
 ExecStart=/home/groupmmsp/ems/.venv/bin/python3 /home/groupmmsp/ems/boot_splash.py
+
+# Allow up to 120 seconds (script waits for network, up to 60s)
 TimeoutStartSec=120
+
 StandardOutput=journal
 StandardError=journal
 

@@ -1,3 +1,15 @@
+/**
+ * App.tsx
+ * =======
+ * Root component for the TRSMS NOC Dashboard.
+ *
+ * Responsibilities:
+ * - Fetches initial site data via REST (GET /api/sites) for history hydration
+ * - Subscribes to Socket.IO events for real-time sensor data, site status, and threshold updates
+ * - Manages global state: sites list, selected site, theme, alerts, smoke alarm
+ * - Renders the sidebar, sensor cards, alert panel, threshold editor, and alarm banner
+ */
+
 import React, { useState, useEffect, useMemo, useCallback, useRef } from 'react';
 import { MOCK_SITES, API_BASE_URL } from './constants';
 import { SiteStatus, Alert, SensorType } from './types';
@@ -34,6 +46,7 @@ import {
 import { motion, AnimatePresence } from 'framer-motion';
 
 export default function App() {
+  // ── Persist selected site and theme in localStorage ──
   const [sites, setSites] = useState<SiteStatus[]>([]);
   const [selectedSiteId, setSelectedSiteId] = useState<string>(() => {
     return localStorage.getItem('trsms_selected_site_id') || '';

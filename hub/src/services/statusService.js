@@ -5,13 +5,14 @@
  * Used by both the REST ingest route and the Socket.IO pi handler.
  */
 
-// Default thresholds — used when a site has no custom thresholds set
+// Default thresholds — used when a site has no custom thresholds in the DB.
+// These mirror the defaults in config.py on the Raspberry Pi.
 const DEFAULT_THRESHOLDS = {
-  temp_fan_on: 29.5,
-  temp_warning: 38,
-  temp_critical: 45,
-  humidity_warning: 70,
-  smoke_critical: 0.5,
+  temp_fan_on: 29.5,       // °C — fan relay activation temperature
+  temp_warning: 38,        // °C — temperature warning threshold
+  temp_critical: 45,       // °C — temperature critical threshold
+  humidity_warning: 70,    // %  — humidity warning threshold
+  smoke_critical: 0.5,     // digital — smoke detection threshold (MQ2 DO pin)
 };
 
 /**
@@ -34,9 +35,10 @@ export function deriveStatus(sensors, siteThresholds = null) {
 
   const temp  = sensors.temperature ?? 0;
   const humid = sensors.humidity    ?? 0;
-  const smoke = sensors.smoke ?? sensors.gas ?? 0;
+  const smoke = sensors.smoke ?? sensors.gas ?? 0;  // Support both 'smoke' and legacy 'gas' key
 
-  // Binary smoke sensor: 1 = critical alert
+  // Priority: critical > warning > online
+  // Smoke sensor is binary (MQ2 DO pin): 1 = gas/smoke above board threshold
   if (temp > t.temp_critical || smoke > t.smoke_critical) return 'critical';
   if (temp > t.temp_warning || humid > t.humidity_warning) return 'warning';
   return 'online';

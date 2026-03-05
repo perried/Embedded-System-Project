@@ -1,3 +1,13 @@
+/**
+ * index.js
+ * ========
+ * TRSMS Hub Server — Express + Socket.IO entry point.
+ *
+ * Creates the HTTP server, attaches Socket.IO with two namespaces
+ * (/pi for Raspberry Pi devices, /dashboard for browser clients),
+ * mounts REST API routes, and serves the built React dashboard.
+ */
+
 import express from 'express';
 import http from 'http';
 import { Server as SocketIOServer } from 'socket.io';
@@ -18,10 +28,10 @@ dotenv.config();
 const app  = express();
 const port = process.env.PORT || 3001;
 
-// ── HTTP server (needed for Socket.IO) ──────
+// ── HTTP server (required for Socket.IO to attach to) ──
 const server = http.createServer(app);
 
-// ── Socket.IO ──────
+// ── Socket.IO server — allow all origins for Pi and dashboard connections ──
 const io = new SocketIOServer(server, {
   cors: {
     origin: '*',
@@ -29,23 +39,25 @@ const io = new SocketIOServer(server, {
   },
 });
 
-// Create namespaces
+// Create namespaces for separation of concerns:
+//   /pi        — Raspberry Pi devices connect here to stream sensor data
+//   /dashboard — Browser clients connect here for real-time updates
 const piNamespace        = io.of('/pi');
 const dashboardNamespace = io.of('/dashboard');
 
-// Initialise Socket.IO handlers
+// Initialise Socket.IO event handlers for each namespace
 initPiHandler(piNamespace, dashboardNamespace);
 initDashboardHandler(dashboardNamespace);
 
-// ── Middleware ──────
-app.use(cors());
-app.use(express.json());
+// ── Middleware ──
+app.use(cors());           // Allow cross-origin requests from any domain
+app.use(express.json());   // Parse JSON request bodies
 
-// ── Routes ──────
-app.use('/api/ingest', ingestRouter);
-app.use('/api/sites',  sitesRouter);
+// ── REST API Routes ──
+app.use('/api/ingest', ingestRouter);  // POST - Pi sensor data (legacy HTTP fallback)
+app.use('/api/sites',  sitesRouter);   // GET  - Dashboard initial data hydration
 
-// Health check
+// Health check endpoint (used by Docker healthcheck / load balancers)
 app.get('/health', (_req, res) => res.json({ status: 'ok' }));
 
 // ── Serve React dashboard (built static files) ──────

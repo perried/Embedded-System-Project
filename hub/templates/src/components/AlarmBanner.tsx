@@ -1,3 +1,16 @@
+/**
+ * AlarmBanner.tsx
+ * ===============
+ * Full-width emergency banner displayed when smoke is detected at any site.
+ *
+ * Features:
+ * - Animated pulsing red background for high visibility
+ * - "Silence Siren" button to mute the audio alarm (visual alert persists)
+ * - Displays the affected site name
+ *
+ * The audio siren is controlled by App.tsx; this component only handles the visual banner.
+ */
+
 import React from 'react';
 import { Shield, VolumeX, AlertTriangle, Flame } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';

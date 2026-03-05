@@ -1,3 +1,12 @@
+/**
+ * notificationService.js
+ * ======================
+ * Firebase Cloud Messaging (FCM) push notification service.
+ * Sends alerts to the 'alerts' topic when a site enters warning or critical state.
+ *
+ * Firebase is optional — if no credentials are provided, notifications are silently skipped.
+ */
+
 import admin from 'firebase-admin';
 import dotenv from 'dotenv';
 
@@ -6,9 +15,9 @@ dotenv.config();
 let isFirebaseInitialized = false;
 
 try {
-    // 1. Check for raw JSON string in ENV (Vercel-friendly)
+    // Option 1: Raw JSON string in env var (Docker / CI-friendly)
     const serviceAccountJson = process.env.FIREBASE_SERVICE_ACCOUNT;
-    // 2. Check for file path in ENV (Legacy/Local)
+    // Option 2: Path to a service account JSON file on disk
     const serviceAccountPath = process.env.FIREBASE_SERVICE_ACCOUNT_PATH;
     
     if (serviceAccountJson) {

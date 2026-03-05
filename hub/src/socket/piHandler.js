@@ -10,6 +10,7 @@ import { deriveStatus, resolveThresholds } from '../services/statusService.js';
 import { sendPushNotification } from '../services/notificationService.js';
 
 // In-memory map of connected Pi devices: siteId → socket.id
+// Used to track which sites are online and to route threshold updates
 const connectedPis = new Map();
 
 /**
@@ -104,14 +105,15 @@ export default function initPiHandler(nsp, dashboardNsp) {
       if (!sensors || typeof sensors !== 'object') return;
 
       const ts = timestamp || Date.now();
+      // Whitelist of accepted sensor types — prevents injection of arbitrary keys
       const ALLOWED_SENSORS = ['temperature', 'humidity', 'smoke'];
 
-      // Insert readings into DB
+      // Build array of validated readings to batch-insert into PostgreSQL
       const readingsToInsert = [];
       for (let [type, value] of Object.entries(sensors)) {
-        if (type === 'gas') type = 'smoke';
-        if (!ALLOWED_SENSORS.includes(type)) continue;
-        if (typeof value !== 'number') continue;
+        if (type === 'gas') type = 'smoke';           // Normalise legacy key
+        if (!ALLOWED_SENSORS.includes(type)) continue; // Skip unknown sensor types
+        if (typeof value !== 'number') continue;       // Skip non-numeric values
         readingsToInsert.push({
           site_id: siteId,
           sensor_type: type,

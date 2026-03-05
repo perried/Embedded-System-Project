@@ -35,12 +35,12 @@ from thresholds import update_thresholds, get_thresholds
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
 logger = logging.getLogger(__name__)
 
-# ── Config ───────────
+# ── Config ── Read connection settings from config.py with safe fallbacks ──
 SOCKET_URL       = getattr(config, 'SOCKET_URL', 'http://localhost:3001')
 SITE_ID          = getattr(config, 'SITE_ID', 'site-001')
 SITE_NAME        = getattr(config, 'SITE_NAME', 'Unknown Site')
 SITE_LOCATION    = getattr(config, 'SITE_LOCATION', 'Unknown Location')
-INTERVAL_SECONDS = getattr(config, 'READ_INTERVAL', 2)
+INTERVAL_SECONDS = getattr(config, 'READ_INTERVAL', 2)  # Seconds between emissions
 SENSOR_DATA_FILE = os.getenv("SENSOR_DATA_FILE", "/tmp/sensor_data.json")
 # ───────────────
 
@@ -86,16 +86,18 @@ class SocketTransmitter:
         self._running = False
         self._thread = None
 
-        # Create Socket.IO client
+        # Create Socket.IO client with auto-reconnection
+        # reconnection_attempts=0 means infinite retries
+        # reconnection_delay_max caps the exponential backoff at 30 seconds
         self.sio = socketio.Client(
             reconnection=True,
-            reconnection_attempts=0,  # infinite retries
+            reconnection_attempts=0,
             reconnection_delay=2,
             reconnection_delay_max=30,
             logger=False,
         )
 
-        # ── Event handlers (on /pi namespace) ──
+        # ── Event handlers (registered on the /pi namespace) ──
         @self.sio.on('connect', namespace='/pi')
         def on_connect():
             logger.info(f"[TRANSMITTER] Connected to hub at {SOCKET_URL}")
@@ -159,15 +161,15 @@ class SocketTransmitter:
             time.sleep(INTERVAL_SECONDS)
 
     def connect(self):
-        """Connect to the hub server."""
+        """Connect to the hub server with site credentials in the auth handshake."""
         try:
             self.sio.connect(
                 SOCKET_URL,
-                namespaces=['/pi'],
+                namespaces=['/pi'],  # Only join the /pi namespace
                 auth={
-                    'siteId': SITE_ID,
-                    'siteName': SITE_NAME,
-                    'location': SITE_LOCATION,
+                    'siteId': SITE_ID,       # Unique site identifier
+                    'siteName': SITE_NAME,   # Human-readable site name
+                    'location': SITE_LOCATION,  # GPS or description
                 },
                 wait_timeout=10,
             )

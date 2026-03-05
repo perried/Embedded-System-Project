@@ -4,13 +4,14 @@ import { getConnectedSiteIds } from '../socket/piHandler.js';
 
 const router = express.Router();
 
-// How many historical readings per sensor to return
+// Maximum number of historical readings per sensor type returned to the dashboard
 const HISTORY_LIMIT = 100;
 
+// Default sensor display config — threshold used when site has no custom overrides
 const SENSOR_DEFAULTS = {
-  temperature: { threshold: 29.5, unit: '°C' },
-  humidity:    { threshold: 70.0, unit: '%'  },
-  smoke:       { threshold: 0.5,  unit: 'digital'},
+  temperature: { threshold: 29.5, unit: '°C' },      // Warning threshold for display
+  humidity:    { threshold: 70.0, unit: '%'  },       // Humidity warning level
+  smoke:       { threshold: 0.5,  unit: 'digital'},   // MQ2 digital output threshold
 };
 
 /**
@@ -30,11 +31,11 @@ router.get('/', async (req, res) => {
         [site.id, HISTORY_LIMIT * Object.keys(SENSOR_DEFAULTS).length]
       );
 
-      // Build a map of sensor_type → readings[]
+      // Group readings by sensor type for the frontend's per-sensor history arrays
       const readingsByType = {};
       rows.forEach((r) => {
-        const type = r.sensor_type === 'gas' ? 'smoke' : r.sensor_type;
-        if (!SENSOR_DEFAULTS[type]) return;
+        const type = r.sensor_type === 'gas' ? 'smoke' : r.sensor_type; // Normalise legacy key
+        if (!SENSOR_DEFAULTS[type]) return;   // Skip unknown sensor types
         if (!readingsByType[type]) readingsByType[type] = [];
         readingsByType[type].push({ timestamp: r.timestamp, value: r.value });
       });

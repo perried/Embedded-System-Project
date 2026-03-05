@@ -1,6 +1,18 @@
+/**
+ * Sidebar.tsx
+ * ===========
+ * Site navigation sidebar for the TRSMS dashboard.
+ *
+ * Displays a list of monitored telecom sites with:
+ * - Colour-coded status indicators (green/amber/red/grey)
+ * - Site name, location, and last update timestamp
+ * - Active site highlighting with animated indicator bar
+ *
+ * On mobile, renders as a slide-out drawer with backdrop overlay.
+ */
+
 import React from 'react';
 import { SiteStatus } from '../types';
-import { cn } from '../lib/utils';
 import { MapPin, Activity, Clock, X } from 'lucide-react';
 import { format } from 'date-fns';
 import { motion, AnimatePresence } from 'motion/react';

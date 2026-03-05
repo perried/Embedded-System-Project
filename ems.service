@@ -1,5 +1,16 @@
+# ems.service — TRSMS Main Application Service
+# ==============================================
+# Runs the sensor monitoring loop (main.py) as a system daemon.
+# Starts after network is available and boot splash has completed.
+#
+# Commands:
+#   sudo systemctl enable ems     # Enable on boot
+#   sudo systemctl start ems      # Start now
+#   sudo systemctl status ems     # Check status
+#   sudo journalctl -u ems -f     # Tail logs
+
 [Unit]
-Description=Telecom Equipment Room Monitor
+Description=TRSMS — Telecom Remote Site Monitoring System
 After=network-online.target ems-splash.service
 Wants=network-online.target
 Requires=ems-splash.service
@@ -8,11 +19,21 @@ Requires=ems-splash.service
 Type=simple
 User=groupmmsp
 WorkingDirectory=/home/groupmmsp/ems
+
+# Force unbuffered output so logs appear in journal immediately
 Environment=PYTHONUNBUFFERED=1
+
+# Wait 5 seconds for I2C bus and GPIO to stabilise after boot
 ExecStartPre=/bin/sleep 5
+
+# Run main.py using the project's virtual environment
 ExecStart=/home/groupmmsp/ems/.venv/bin/python3 /home/groupmmsp/ems/main.py
+
+# Auto-restart on crash with 10 second cooldown
 Restart=on-failure
 RestartSec=10
+
+# Direct all output to systemd journal
 StandardOutput=journal
 StandardError=journal
 

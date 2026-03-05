@@ -9,6 +9,7 @@
 
 :root {
   --bg-main: #f9fafb;
+  --bg-dashboard: #f9fafb;
   --bg-sidebar: #ffffff;
   --bg-card: #ffffff;
   --bg-header: #ffffff;
@@ -21,6 +22,7 @@
 
 .dark {
   --bg-main: #050505;
+  --bg-dashboard: #050505;
   --bg-sidebar: #0a0a0a;
   --bg-card: #151619;
   --bg-header: #0a0a0a;

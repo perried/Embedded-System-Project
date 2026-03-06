@@ -12,7 +12,14 @@ import React from 'react';
 import { Alert } from '../types';
 import { AlertCircle, AlertTriangle, CheckCircle2, Clock, X } from 'lucide-react';
 import { cn } from '../lib/utils';
-import { format } from 'date-fns';
+import { format as fnsFormat } from 'date-fns';
+
+function safeFormat(ts: number | string | null | undefined, pattern: string, fallback = '--:--'): string {
+  if (!ts) return fallback;
+  const d = new Date(typeof ts === 'string' ? Number(ts) : ts);
+  if (isNaN(d.getTime())) return fallback;
+  return fnsFormat(d, pattern);
+}
 
 interface AlertPanelProps {
   alerts: Alert[];
@@ -70,7 +77,7 @@ export const AlertPanel: React.FC<AlertPanelProps> = ({ alerts, onClose }) => {
                       </span>
                       <span className="text-[10px] text-[var(--text-muted)] flex items-center gap-1">
                         <Clock size={10} />
-                        {format(alert.timestamp, 'HH:mm')}
+                        {safeFormat(alert.timestamp, 'HH:mm')}
                       </span>
                     </div>
                     <p className="text-xs text-[var(--text-primary)] opacity-80 leading-relaxed mb-2">

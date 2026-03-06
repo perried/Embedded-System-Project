@@ -23,7 +23,15 @@ import {
 import { SensorReading, SensorType } from '../types';
 import { cn } from '../lib/utils';
 import { Thermometer, Droplets, Wind, AlertTriangle, TrendingUp, TrendingDown, Minus, Flame, Shield, CheckCircle2 } from 'lucide-react';
-import { format } from 'date-fns';
+import { format as fnsFormat } from 'date-fns';
+
+/** Safe format wrapper — returns fallback string if timestamp is invalid */
+function safeFormat(ts: number | string | null | undefined, pattern: string, fallback = '--:--'): string {
+  if (!ts) return fallback;
+  const d = new Date(typeof ts === 'string' ? Number(ts) : ts);
+  if (isNaN(d.getTime())) return fallback;
+  return fnsFormat(d, pattern);
+}
 
 interface SensorCardProps {
   type: SensorType;
@@ -153,7 +161,7 @@ export const SensorCard: React.FC<SensorCardProps> = ({
                         "h-full flex-1 transition-all duration-300",
                         reading.value === 1 ? "bg-red-500" : "bg-emerald-500/40"
                       )}
-                      title={`${format(reading.timestamp, 'HH:mm')}: ${reading.value === 1 ? 'ALARM' : 'OK'}`}
+                      title={`${safeFormat(reading.timestamp, 'HH:mm')}: ${reading.value === 1 ? 'ALARM' : 'OK'}`}
                     />
                   ))
                 ) : (
@@ -161,8 +169,8 @@ export const SensorCard: React.FC<SensorCardProps> = ({
                 )}
               </div>
               <div className="flex justify-between px-1 text-[8px] text-[var(--text-muted)] font-mono">
-                <span>{history.length > 0 ? format(history[0].timestamp, 'HH:mm') : '00:00'}</span>
-                <span>{history.length > 0 ? format(history[history.length - 1].timestamp, 'HH:mm') : '23:59'}</span>
+                <span>{history.length > 0 ? safeFormat(history[0].timestamp, 'HH:mm') : '00:00'}</span>
+                <span>{history.length > 0 ? safeFormat(history[history.length - 1].timestamp, 'HH:mm') : '23:59'}</span>
               </div>
             </div>
 
@@ -172,7 +180,7 @@ export const SensorCard: React.FC<SensorCardProps> = ({
                 <div className="flex items-center gap-2 text-red-400">
                   <Flame size={14} />
                   <span className="text-xs font-bold">
-                    {format(history.filter(h => h.value === 1).pop()?.timestamp || 0, 'MMM d, HH:mm:ss')}
+                    {safeFormat(history.filter(h => h.value === 1).pop()?.timestamp || 0, 'MMM d, HH:mm:ss')}
                   </span>
                 </div>
               ) : (
@@ -199,7 +207,7 @@ export const SensorCard: React.FC<SensorCardProps> = ({
                 axisLine={false}
                 tickLine={false}
                 tick={{ fill: 'var(--text-muted)', fontSize: 9 }}
-                tickFormatter={(time) => format(time, 'HH:mm')}
+                tickFormatter={(time) => safeFormat(time, 'HH:mm')}
                 minTickGap={30}
               />
               <YAxis
@@ -220,7 +228,7 @@ export const SensorCard: React.FC<SensorCardProps> = ({
                 }}
                 itemStyle={{ color: 'var(--text-primary)', padding: '2px 0' }}
                 labelStyle={{ color: 'var(--text-muted)', fontSize: '10px', marginBottom: '4px' }}
-                labelFormatter={(time) => format(time, 'MMM d, HH:mm:ss')}
+                labelFormatter={(time) => safeFormat(time, 'MMM d, HH:mm:ss')}
                 formatter={(value: number) => [`${value.toFixed(2)} ${unit}`, config.label]}
               />
               <ReferenceLine
@@ -256,7 +264,7 @@ export const SensorCard: React.FC<SensorCardProps> = ({
         </div>
         <div className="flex flex-col">
           <span className="text-[8px] text-[var(--text-muted)] uppercase font-mono">{isSmokeType ? 'Last Pulse' : 'Avg'}</span>
-          <span className="text-xs font-bold text-[var(--text-primary)]">{isSmokeType ? format(Date.now(), 'HH:mm:ss') : `${stats.avg.toFixed(1)}${unit}`}</span>
+          <span className="text-xs font-bold text-[var(--text-primary)]">{isSmokeType ? safeFormat(Date.now(), 'HH:mm:ss') : `${stats.avg.toFixed(1)}${unit}`}</span>
         </div>
         <div className="flex flex-col">
           <span className="text-[8px] text-[var(--text-muted)] uppercase font-mono">{isSmokeType ? 'Reliability' : 'Max'}</span>

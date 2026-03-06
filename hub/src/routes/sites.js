@@ -1,6 +1,7 @@
 import express from 'express';
 import db from '../db.js';
 import { getConnectedSiteIds } from '../socket/piHandler.js';
+import { authenticateToken } from '../middleware/auth.js';
 
 const router = express.Router();
 
@@ -74,6 +75,71 @@ router.get('/', async (req, res) => {
   } catch (err) {
     console.error('[SITES] Error fetching sites:', err.message);
     res.status(500).json({ error: 'Failed to retrieve site data.' });
+  }
+});
+
+/**
+ * POST /api/sites
+ * Manually register a new site.
+ */
+router.post('/', authenticateToken, async (req, res) => {
+  const { id, name, location } = req.body;
+
+  if (!id || !name) {
+    return res.status(400).json({ error: 'id and name are required.' });
+  }
+
+  try {
+    const { rows } = await db.query(
+      `INSERT INTO telco_sites (id, name, location) VALUES ($1, $2, $3) RETURNING *`,
+      [id, name, location || 'Unknown']
+    );
+    res.status(201).json(rows[0]);
+  } catch (err) {
+    if (err.code === '23505') {
+      return res.status(409).json({ error: 'Site ID already exists.' });
+    }
+    console.error('[SITES] Create error:', err.message);
+    res.status(500).json({ error: 'Failed to create site.' });
+  }
+});
+
+/**
+ * PUT /api/sites/:id
+ * Update a site's name and/or location.
+ */
+router.put('/:id', authenticateToken, async (req, res) => {
+  const { id } = req.params;
+  const { name, location } = req.body;
+
+  try {
+    const { rows, rowCount } = await db.query(
+      `UPDATE telco_sites SET name = COALESCE($1, name), location = COALESCE($2, location)
+       WHERE id = $3 RETURNING *`,
+      [name || null, location || null, id]
+    );
+    if (rowCount === 0) return res.status(404).json({ error: 'Site not found.' });
+    res.json(rows[0]);
+  } catch (err) {
+    console.error('[SITES] Update error:', err.message);
+    res.status(500).json({ error: 'Failed to update site.' });
+  }
+});
+
+/**
+ * DELETE /api/sites/:id
+ * Delete a site and its sensor history.
+ */
+router.delete('/:id', authenticateToken, async (req, res) => {
+  const { id } = req.params;
+
+  try {
+    const { rowCount } = await db.query('DELETE FROM telco_sites WHERE id = $1', [id]);
+    if (rowCount === 0) return res.status(404).json({ error: 'Site not found.' });
+    res.json({ deleted: true });
+  } catch (err) {
+    console.error('[SITES] Delete error:', err.message);
+    res.status(500).json({ error: 'Failed to delete site.' });
   }
 });
 

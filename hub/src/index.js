@@ -16,8 +16,11 @@ import dotenv from 'dotenv';
 
 import path from 'path';
 import { fileURLToPath } from 'url';
-import ingestRouter from './routes/ingest.js';
-import sitesRouter  from './routes/sites.js';
+import ingestRouter  from './routes/ingest.js';
+import sitesRouter   from './routes/sites.js';
+import authRouter    from './routes/auth.js';
+import usersRouter   from './routes/users.js';
+import shippersRouter from './routes/shippers.js';
 import initPiHandler from './socket/piHandler.js';
 import initDashboardHandler from './socket/dashboardHandler.js';
 
@@ -54,8 +57,11 @@ app.use(cors());           // Allow cross-origin requests from any domain
 app.use(express.json());   // Parse JSON request bodies
 
 // ── REST API Routes ──
-app.use('/api/ingest', ingestRouter);  // POST - Pi sensor data (legacy HTTP fallback)
-app.use('/api/sites',  sitesRouter);   // GET  - Dashboard initial data hydration
+app.use('/api/ingest',   ingestRouter);   // POST - Pi sensor data (legacy HTTP fallback)
+app.use('/api/sites',    sitesRouter);    // CRUD - Site management + dashboard hydration
+app.use('/api/auth',     authRouter);     // POST - Login / Register
+app.use('/api/users',    usersRouter);    // GET  - Current user profile
+app.use('/api/shippers', shippersRouter); // CRUD - Shippers management
 
 // Health check endpoint (used by Docker healthcheck / load balancers)
 app.get('/health', (_req, res) => res.json({ status: 'ok' }));

@@ -13,7 +13,7 @@
 
 import React from 'react';
 import { SiteStatus } from '../types';
-import { MapPin, Activity, Clock, X } from 'lucide-react';
+import { MapPin, Clock, X, Truck, Radio } from 'lucide-react';
 import { format } from 'date-fns';
 import { motion, AnimatePresence } from 'motion/react';
 import { cn } from '../lib/utils';
@@ -25,6 +25,8 @@ interface SidebarProps {
   isOpen: boolean;
   onClose: () => void;
   theme: 'light' | 'dark';
+  activePage?: 'dashboard' | 'shippers' | 'sites';
+  onNavigate?: (page: string) => void;
 }
 
 export const Sidebar: React.FC<SidebarProps> = ({
@@ -33,7 +35,9 @@ export const Sidebar: React.FC<SidebarProps> = ({
   onSelectSite,
   isOpen,
   onClose,
-  theme
+  theme,
+  activePage = 'dashboard',
+  onNavigate,
 }) => {
   const lightFavicon = "https://uxwing.com/wp-content/themes/uxwing/download/internet-network-technology/signal-tower-icon.svg";
   const darkFavicon = "https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcQgxqMcLnCsAYeb5yMsDZwS_A6Nyf5lrQq1IA&s";
@@ -65,7 +69,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
                 className="w-full h-full object-contain"
               />
             </div>
-            <h1 className="text-xl font-bold tracking-tight text-[var(--text-primary)]">TERMS</h1>
+            <h1 className="text-xl font-bold tracking-tight text-[var(--text-primary)]">TRSMS</h1>
           </div>
           <button
             onClick={onClose}
@@ -142,6 +146,34 @@ export const Sidebar: React.FC<SidebarProps> = ({
               </div>
             </button>
           ))}
+        </div>
+
+        {/* Bottom navigation */}
+        <div className="p-3 border-t border-[var(--border-subtle)] space-y-1">
+          <button
+            onClick={() => onNavigate?.('sites')}
+            className={cn(
+              "w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-left text-sm transition-all",
+              activePage === 'sites'
+                ? "bg-emerald-500/10 text-emerald-500 font-medium"
+                : "text-[var(--text-secondary)] hover:bg-[var(--border-subtle)] hover:text-[var(--text-primary)]"
+            )}
+          >
+            <Radio size={16} />
+            Sites
+          </button>
+          <button
+            onClick={() => onNavigate?.('shippers')}
+            className={cn(
+              "w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-left text-sm transition-all",
+              activePage === 'shippers'
+                ? "bg-emerald-500/10 text-emerald-500 font-medium"
+                : "text-[var(--text-secondary)] hover:bg-[var(--border-subtle)] hover:text-[var(--text-primary)]"
+            )}
+          >
+            <Truck size={16} />
+            Shippers
+          </button>
         </div>
 
         <div className="p-4 border-t border-[var(--border-subtle)] bg-[var(--border-subtle)]/30 flex justify-center">

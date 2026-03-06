@@ -35,4 +35,4 @@ SITE_LOCATION = "40.71° N, 74.00° W"  # GPS / description
 SEND_INTERVAL = 30   # Seconds between data transmissions (legacy HTTP)
 
 # ── Socket.IO Hub ─────────────────────────────────────────────────────
-SOCKET_URL = "http://localhost:3001"  # Change to your Render URL in production
+SOCKET_URL = "http://34.35.155.136:3001"  # GCP VM hub

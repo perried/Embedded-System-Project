@@ -61,20 +61,22 @@ export default function initPiHandler(nsp, dashboardNsp) {
     // Join a room named after the siteId
     socket.join(siteId);
 
-    // ── Auto-register / update site in DB ──
+    // ── Verify site exists in DB (must be registered via dashboard first) ──
     try {
-      const { rows } = await db.query(
-        `INSERT INTO telco_sites (id, name, location, status)
-         VALUES ($1, $2, $3, 'online')
-         ON CONFLICT (id) DO UPDATE SET status = 'online'
-         RETURNING (xmax = 0) AS inserted`,
-        [siteId, siteName || siteId, location || 'Unknown']
+      const { rowCount } = await db.query(
+        `UPDATE telco_sites SET status = 'online' WHERE id = $1`,
+        [siteId]
       );
-      if (rows[0]?.inserted) {
-        console.log(`[PI] Auto-registered new site: ${siteId}`);
+      if (rowCount === 0) {
+        console.warn(`[PI] Connection rejected — site ${siteId} not registered. Add it via the dashboard first.`);
+        socket.emit('error', { message: 'Site not registered. Ask an admin to add it via the dashboard.' });
+        socket.disconnect(true);
+        return;
       }
     } catch (err) {
-      console.error(`[PI] DB error during site upsert for ${siteId}:`, err.message);
+      console.error(`[PI] DB error during site lookup for ${siteId}:`, err.message);
+      socket.disconnect(true);
+      return;
     }
 
     // ── Push stored thresholds to Pi ──

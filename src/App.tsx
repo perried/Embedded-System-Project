@@ -4,48 +4,85 @@
  * Root component for the TRSMS NOC Dashboard.
  *
  * Responsibilities:
+ * - Authentication gate — shows Login page until user is signed in
  * - Fetches initial site data via REST (GET /api/sites) for history hydration
  * - Subscribes to Socket.IO events for real-time sensor data, site status, and threshold updates
  * - Manages global state: sites list, selected site, theme, alerts, smoke alarm
  * - Renders the sidebar, sensor cards, alert panel, threshold editor, and alarm banner
+ * - Provides navigation to the Shippers management page
  */
 
-import React, { useState, useEffect, useMemo, useCallback, useRef } from 'react';
+import React, { useState, useEffect, useMemo, useRef } from 'react';
 import { MOCK_SITES, API_BASE_URL } from './constants';
 import { SiteStatus, Alert, SensorType } from './types';
 import { cn } from './lib/utils';
 import {
   onSiteData,
   onSiteStatus,
-  onSitesList,
   subscribeSite,
   disconnectSocket,
   SiteDataEvent,
   SiteStatusEvent,
-  SitesListItem,
   onThresholdsUpdated,
 } from './lib/socket';
+import { AuthProvider, useAuth } from './context/AuthContext';
+import Login from './pages/Login';
+import Shippers from './pages/Shippers';
+import Sites from './pages/Sites';
 import { Sidebar } from './components/Sidebar';
 import { SensorCard } from './components/SensorCard';
 import { AlertPanel } from './components/AlertPanel';
 import { AlarmBanner } from './components/AlarmBanner';
 import { ThresholdEditor } from './components/ThresholdEditor';
 import {
-  LayoutDashboard,
   Bell,
   RefreshCw,
   Sun,
   Moon,
   Menu,
-  Settings,
-  X,
-  Shield,
-  Flame,
   SlidersHorizontal,
+  LogOut,
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 
+// ── Root export: wraps everything in AuthProvider ──
 export default function App() {
+  return (
+    <AuthProvider>
+      <AppInner />
+    </AuthProvider>
+  );
+}
+
+// ── Routes between Login and the Dashboard ──
+function AppInner() {
+  const { user, isLoading } = useAuth();
+  const [theme] = useState<'light' | 'dark'>(() =>
+    (localStorage.getItem('trsms_theme') as 'light' | 'dark') || 'dark'
+  );
+
+  useEffect(() => {
+    const root = window.document.documentElement;
+    root.classList.remove('light', 'dark');
+    root.classList.add(theme);
+  }, [theme]);
+
+  if (isLoading) {
+    return (
+      <div className="min-h-screen bg-[var(--bg-dashboard)] flex items-center justify-center">
+        <RefreshCw className="animate-spin text-emerald-500 w-8 h-8" />
+      </div>
+    );
+  }
+
+  return user ? <Dashboard /> : <Login />;
+}
+
+// ── Authenticated NOC Dashboard ──
+function Dashboard() {
+  const { user, logout } = useAuth();
+  const [activePage, setActivePage] = useState<'dashboard' | 'shippers' | 'sites'>('dashboard');
+
   // ── Persist selected site and theme in localStorage ──
   const [sites, setSites] = useState<SiteStatus[]>([]);
   const [selectedSiteId, setSelectedSiteId] = useState<string>(() => {
@@ -62,7 +99,7 @@ export default function App() {
   const [hasSmokeAlert, setHasSmokeAlert] = useState(false);
   const [isSilenced, setIsSilenced] = useState(false);
   const [showThresholds, setShowThresholds] = useState(false);
-  const audioRef = React.useRef<HTMLAudioElement | null>(null);
+  const audioRef = useRef<HTMLAudioElement | null>(null);
 
   // ── REST fetch for initial hydration (includes history data) ──
   const fetchSites = async () => {
@@ -90,16 +127,12 @@ export default function App() {
 
   // ── Socket.IO real-time updates ──
   useEffect(() => {
-    // Initial hydration via REST (includes history)
     fetchSites();
 
-    // Listen for real-time site data updates
     const offData = onSiteData((event: SiteDataEvent) => {
       setSites(prev => {
         const updated = prev.map(site => {
           if (site.id !== event.siteId) return site;
-
-          // Update current values and append to history
           const newSensors = { ...site.sensors };
           for (const [type, value] of Object.entries(event.sensors) as [string, number][]) {
             if (type in newSensors) {
@@ -111,7 +144,6 @@ export default function App() {
               };
             }
           }
-
           return {
             ...site,
             status: event.status as SiteStatus['status'],
@@ -120,7 +152,6 @@ export default function App() {
           };
         });
 
-        // Check smoke alerts
         const smokeActive = updated.some(s => s.sensors.smoke?.current === 1);
         if (!smokeActive) setIsSilenced(false);
         setHasSmokeAlert(smokeActive);
@@ -129,28 +160,20 @@ export default function App() {
       });
     });
 
-    // Listen for site connect/disconnect
     const offStatus = onSiteStatus((event: SiteStatusEvent) => {
       setSites(prev => {
-        // If this is a new site we don't know about yet, re-fetch
         const exists = prev.some(s => s.id === event.siteId);
         if (!exists && event.connected) {
-          fetchSites(); // Full refresh to get the new site's data
+          fetchSites();
           return prev;
         }
-
         return prev.map(site => {
           if (site.id !== event.siteId) return site;
-          return {
-            ...site,
-            status: event.status as SiteStatus['status'],
-            connected: event.connected,
-          };
+          return { ...site, status: event.status as SiteStatus['status'], connected: event.connected };
         });
       });
     });
 
-    // Listen for threshold updates (from other dashboard clients)
     const offThresholds = onThresholdsUpdated((event) => {
       setSites(prev => prev.map(site => {
         if (site.id !== event.siteId) return site;
@@ -166,11 +189,8 @@ export default function App() {
     };
   }, []);
 
-  // Subscribe to selected site's room when selection changes
   useEffect(() => {
-    if (selectedSiteId) {
-      subscribeSite(selectedSiteId);
-    }
+    if (selectedSiteId) subscribeSite(selectedSiteId);
   }, [selectedSiteId]);
 
   useEffect(() => {
@@ -183,10 +203,10 @@ export default function App() {
   useEffect(() => {
     if (hasSmokeAlert && !isSilenced) {
       if (!audioRef.current) {
-        audioRef.current = new Audio('https://assets.mixkit.co/active_storage/sfx/2569/2569-preview.mp3'); // Police siren placeholder
+        audioRef.current = new Audio('https://assets.mixkit.co/active_storage/sfx/2569/2569-preview.mp3');
         audioRef.current.loop = true;
       }
-      audioRef.current.play().catch(e => console.log("Audio play blocked by browser policy. Interaction required."));
+      audioRef.current.play().catch(() => { });
     } else {
       if (audioRef.current) {
         audioRef.current.pause();
@@ -199,15 +219,9 @@ export default function App() {
 
   const selectedSite = useMemo(() => {
     const site = sites.find(s => s.id === selectedSiteId) || sites[0] || MOCK_SITES[0];
-
-    // Use the connected field from WebSocket if available, otherwise fall back to timeout heuristic
-    const isOffline = site.connected === false || 
+    const isOffline = site.connected === false ||
       (site.connected === undefined && site.lastUpdate ? (Date.now() - site.lastUpdate) > 5 * 60 * 1000 : false);
-
-    return {
-      ...site,
-      status: (isOffline ? 'offline' : site?.status || 'offline') as SiteStatus['status']
-    };
+    return { ...site, status: (isOffline ? 'offline' : site?.status || 'offline') as SiteStatus['status'] };
   }, [sites, selectedSiteId]);
 
   const alertingSite = useMemo(() => {
@@ -217,12 +231,9 @@ export default function App() {
   const alerts = useMemo(() => {
     const allAlerts: Alert[] = [];
     if (!sites.length) return allAlerts;
-
     sites.forEach(site => {
       (Object.entries(site.sensors) as [SensorType, any][]).forEach(([type, sensor]) => {
-        // Handle smoke specifically for alerts (binary 1 means alert)
         const isAlert = type === 'smoke' ? sensor.current === 1 : sensor.current > sensor.threshold;
-
         if (isAlert) {
           allAlerts.push({
             id: `alert-${site.id}-${type}`,
@@ -270,10 +281,13 @@ export default function App() {
           setSelectedSiteId(id);
           localStorage.setItem('trsms_selected_site_id', id);
           setIsSidebarOpen(false);
+          setActivePage('dashboard');
         }}
         isOpen={isSidebarOpen}
         theme={theme}
         onClose={() => setIsSidebarOpen(false)}
+        activePage={activePage}
+        onNavigate={(page) => { setActivePage(page as any); setIsSidebarOpen(false); }}
       />
 
       <main className="flex-1 flex flex-col min-w-0 overflow-hidden relative">
@@ -295,30 +309,35 @@ export default function App() {
             </button>
             <div className="flex flex-col sm:flex-row sm:items-center gap-0 sm:gap-3 min-w-0">
               <span className="text-sm sm:text-base font-bold text-[var(--text-primary)] truncate leading-tight">
-                {selectedSite.name}
+                {activePage === 'shippers' ? 'Shippers' : activePage === 'sites' ? 'Sites' : selectedSite.name}
               </span>
-              <div className="flex items-center gap-2">
-                <div className={cn(
-                  "w-1.5 h-1.5 rounded-full shrink-0",
-                  selectedSite.status === 'online' ? 'bg-emerald-500 shadow-[0_0_4px_rgba(16,185,129,0.5)]' :
-                    selectedSite.status === 'warning' ? 'bg-amber-500' :
-                      selectedSite.status === 'critical' ? 'bg-red-500 animate-pulse' :
-                        'bg-[var(--text-muted)] opacity-50'
-                )} />
-                <span className={cn(
-                  "text-[9px] sm:text-[10px] font-bold uppercase tracking-widest leading-none",
-                  selectedSite.status === 'online' ? 'text-emerald-500' :
-                    selectedSite.status === 'warning' ? 'text-amber-500' :
-                      selectedSite.status === 'critical' ? 'text-red-500' :
-                        'text-[var(--text-muted)]'
-                )}>
-                  {selectedSite.status}
-                </span>
-              </div>
+              {activePage === 'dashboard' && (
+                <div className="flex items-center gap-2">
+                  <div className={cn(
+                    "w-1.5 h-1.5 rounded-full shrink-0",
+                    selectedSite.status === 'online' ? 'bg-emerald-500 shadow-[0_0_4px_rgba(16,185,129,0.5)]' :
+                      selectedSite.status === 'warning' ? 'bg-amber-500' :
+                        selectedSite.status === 'critical' ? 'bg-red-500 animate-pulse' :
+                          'bg-[var(--text-muted)] opacity-50'
+                  )} />
+                  <span className={cn(
+                    "text-[9px] sm:text-[10px] font-bold uppercase tracking-widest leading-none",
+                    selectedSite.status === 'online' ? 'text-emerald-500' :
+                      selectedSite.status === 'warning' ? 'text-amber-500' :
+                        selectedSite.status === 'critical' ? 'text-red-500' :
+                          'text-[var(--text-muted)]'
+                  )}>
+                    {selectedSite.status}
+                  </span>
+                </div>
+              )}
             </div>
           </div>
 
           <div className="flex items-center gap-2 sm:gap-4">
+            <span className="hidden sm:block text-[10px] text-[var(--text-muted)] truncate max-w-[120px]" title={user?.full_name}>
+              {user?.full_name}
+            </span>
             <button
               onClick={toggleTheme}
               className="p-2 rounded-full hover:bg-[var(--border-subtle)] text-[var(--text-secondary)] transition-colors"
@@ -336,163 +355,180 @@ export default function App() {
             >
               <RefreshCw size={18} />
             </button>
+            {activePage === 'dashboard' && (
+              <>
+                <button
+                  onClick={() => setShowThresholds(!showThresholds)}
+                  className={cn(
+                    "p-2 rounded-full hover:bg-[var(--border-subtle)] transition-all relative",
+                    showThresholds ? "bg-emerald-500/10 text-emerald-500" : "text-[var(--text-secondary)]"
+                  )}
+                  title="Thresholds"
+                >
+                  <SlidersHorizontal size={18} />
+                </button>
+                <button
+                  onClick={() => setShowAlerts(!showAlerts)}
+                  className={cn(
+                    "p-2 rounded-full hover:bg-[var(--border-subtle)] transition-all relative",
+                    showAlerts ? "bg-emerald-500/10 text-emerald-500" : "text-[var(--text-secondary)]"
+                  )}
+                  title="Alerts"
+                >
+                  <Bell size={18} />
+                  {alerts.length > 0 && (
+                    <span className="absolute top-2 right-2 w-2 h-2 bg-red-500 rounded-full border-2 border-[var(--bg-header)]" />
+                  )}
+                </button>
+              </>
+            )}
             <button
-              onClick={() => setShowThresholds(!showThresholds)}
-              className={cn(
-                "p-2 rounded-full hover:bg-[var(--border-subtle)] transition-all relative",
-                showThresholds ? "bg-emerald-500/10 text-emerald-500" : "text-[var(--text-secondary)]"
-              )}
-              title="Thresholds"
+              onClick={logout}
+              className="p-2 rounded-full hover:bg-red-500/10 hover:text-red-400 text-[var(--text-secondary)] transition-colors"
+              title="Sign out"
             >
-              <SlidersHorizontal size={18} />
-            </button>
-            <button
-              onClick={() => setShowAlerts(!showAlerts)}
-              className={cn(
-                "p-2 rounded-full hover:bg-[var(--border-subtle)] transition-all relative",
-                showAlerts ? "bg-emerald-500/10 text-emerald-500" : "text-[var(--text-secondary)]"
-              )}
-              title="Alerts"
-            >
-              <Bell size={18} />
-              {alerts.length > 0 && (
-                <span className="absolute top-2 right-2 w-2 h-2 bg-red-500 rounded-full border-2 border-[var(--bg-header)]" />
-              )}
+              <LogOut size={18} />
             </button>
           </div>
         </header>
 
         {/* Content */}
-        <div className="flex-1 overflow-y-auto p-4 lg:p-8">
-          {loading ? (
-            <div className="h-full flex items-center justify-center">
-              <RefreshCw className="animate-spin text-emerald-500" size={32} />
-            </div>
-          ) : (
-            <div className="max-w-7xl mx-auto">
-              <div className="grid grid-cols-12 gap-6 relative">
-                {/* Sensor Cards */}
-                <div className={cn(
-                  "col-span-12 transition-all duration-500",
-                  showAlerts ? "lg:col-span-8" : "lg:col-span-12"
-                )}>
+        {activePage === 'shippers' ? (
+          <Shippers />
+        ) : activePage === 'sites' ? (
+          <Sites />
+        ) : (
+          <div className="flex-1 overflow-y-auto p-4 lg:p-8">
+            {loading ? (
+              <div className="h-full flex items-center justify-center">
+                <RefreshCw className="animate-spin text-emerald-500" size={32} />
+              </div>
+            ) : (
+              <div className="max-w-7xl mx-auto">
+                <div className="grid grid-cols-12 gap-6 relative">
+                  {/* Sensor Cards */}
                   <div className={cn(
-                    "grid grid-cols-1 md:grid-cols-2 gap-6 transition-all duration-500",
-                    !showAlerts && "lg:grid-cols-3"
+                    "col-span-12 transition-all duration-500",
+                    showAlerts ? "lg:col-span-8" : "lg:col-span-12"
                   )}>
-                    <AnimatePresence mode="wait">
-                      {/* Temperature */}
-                      {selectedSite.sensors?.temperature && (
-                        <motion.div
-                          key={`${selectedSiteId}-temp`}
-                          initial={{ opacity: 0, y: 20 }}
-                          animate={{ opacity: 1, y: 0 }}
-                          exit={{ opacity: 0, y: -20 }}
-                          className={cn(
-                            "col-span-1 md:col-span-2 transition-all duration-500",
-                            !showAlerts && "lg:col-span-1"
-                          )}
-                        >
-                          <SensorCard
-                            type="temperature"
-                            current={selectedSite.sensors.temperature.current}
-                            unit={selectedSite.sensors.temperature.unit}
-                            history={selectedSite.sensors.temperature.history}
-                            threshold={selectedSite.sensors.temperature.threshold}
-                          />
-                        </motion.div>
-                      )}
+                    <div className={cn(
+                      "grid grid-cols-1 md:grid-cols-2 gap-6 transition-all duration-500",
+                      !showAlerts && "lg:grid-cols-3"
+                    )}>
+                      <AnimatePresence mode="wait">
+                        {/* Temperature */}
+                        {selectedSite.sensors?.temperature && (
+                          <motion.div
+                            key={`${selectedSiteId}-temp`}
+                            initial={{ opacity: 0, y: 20 }}
+                            animate={{ opacity: 1, y: 0 }}
+                            exit={{ opacity: 0, y: -20 }}
+                            className={cn(
+                              "col-span-1 md:col-span-2 transition-all duration-500",
+                              !showAlerts && "lg:col-span-1"
+                            )}
+                          >
+                            <SensorCard
+                              type="temperature"
+                              current={selectedSite.sensors.temperature.current}
+                              unit={selectedSite.sensors.temperature.unit}
+                              history={selectedSite.sensors.temperature.history}
+                              threshold={selectedSite.sensors.temperature.threshold}
+                            />
+                          </motion.div>
+                        )}
 
-                      {/* Humidity */}
-                      {selectedSite.sensors?.humidity && (
-                        <motion.div
-                          key={`${selectedSiteId}-hum`}
-                          initial={{ opacity: 0, y: 20 }}
-                          animate={{ opacity: 1, y: 0 }}
-                          exit={{ opacity: 0, y: -20 }}
-                          transition={{ delay: 0.1 }}
-                          className="col-span-1"
-                        >
-                          <SensorCard
-                            type="humidity"
-                            current={selectedSite.sensors.humidity.current}
-                            unit={selectedSite.sensors.humidity.unit}
-                            history={selectedSite.sensors.humidity.history}
-                            threshold={selectedSite.sensors.humidity.threshold}
-                          />
-                        </motion.div>
-                      )}
+                        {/* Humidity */}
+                        {selectedSite.sensors?.humidity && (
+                          <motion.div
+                            key={`${selectedSiteId}-hum`}
+                            initial={{ opacity: 0, y: 20 }}
+                            animate={{ opacity: 1, y: 0 }}
+                            exit={{ opacity: 0, y: -20 }}
+                            transition={{ delay: 0.1 }}
+                            className="col-span-1"
+                          >
+                            <SensorCard
+                              type="humidity"
+                              current={selectedSite.sensors.humidity.current}
+                              unit={selectedSite.sensors.humidity.unit}
+                              history={selectedSite.sensors.humidity.history}
+                              threshold={selectedSite.sensors.humidity.threshold}
+                            />
+                          </motion.div>
+                        )}
 
-                      {/* Smoke */}
-                      {selectedSite.sensors?.smoke && (
+                        {/* Smoke */}
+                        {selectedSite.sensors?.smoke && (
+                          <motion.div
+                            key={`${selectedSiteId}-smoke`}
+                            initial={{ opacity: 0, y: 20 }}
+                            animate={{ opacity: 1, y: 0 }}
+                            exit={{ opacity: 0, y: -20 }}
+                            transition={{ delay: 0.2 }}
+                            className="col-span-1"
+                          >
+                            <SensorCard
+                              type="smoke"
+                              current={selectedSite.sensors.smoke.current}
+                              unit={selectedSite.sensors.smoke.unit}
+                              history={selectedSite.sensors.smoke.history}
+                              threshold={selectedSite.sensors.smoke.threshold}
+                            />
+                          </motion.div>
+                        )}
+                      </AnimatePresence>
+                    </div>
+
+                    {/* Threshold Editor */}
+                    <AnimatePresence>
+                      {showThresholds && (
                         <motion.div
-                          key={`${selectedSiteId}-smoke`}
-                          initial={{ opacity: 0, y: 20 }}
-                          animate={{ opacity: 1, y: 0 }}
-                          exit={{ opacity: 0, y: -20 }}
-                          transition={{ delay: 0.2 }}
-                          className="col-span-1"
+                          initial={{ opacity: 0, height: 0 }}
+                          animate={{ opacity: 1, height: 'auto' }}
+                          exit={{ opacity: 0, height: 0 }}
+                          className="mt-6 overflow-hidden"
                         >
-                          <SensorCard
-                            type="smoke"
-                            current={selectedSite.sensors.smoke.current}
-                            unit={selectedSite.sensors.smoke.unit}
-                            history={selectedSite.sensors.smoke.history}
-                            threshold={selectedSite.sensors.smoke.threshold}
+                          <ThresholdEditor
+                            site={selectedSite}
+                            onClose={() => setShowThresholds(false)}
                           />
                         </motion.div>
                       )}
                     </AnimatePresence>
                   </div>
 
-                  {/* Threshold Editor */}
+                  {/* Alerts Panel Overlay (Mobile) / Sidebar (Desktop) */}
                   <AnimatePresence>
-                    {showThresholds && (
-                      <motion.div
-                        initial={{ opacity: 0, height: 0 }}
-                        animate={{ opacity: 1, height: 'auto' }}
-                        exit={{ opacity: 0, height: 0 }}
-                        className="mt-6 overflow-hidden"
-                      >
-                        <ThresholdEditor
-                          site={selectedSite}
-                          onClose={() => setShowThresholds(false)}
+                    {showAlerts && (
+                      <>
+                        {/* Backdrop for mobile */}
+                        <motion.div
+                          initial={{ opacity: 0 }}
+                          animate={{ opacity: 1 }}
+                          exit={{ opacity: 0 }}
+                          onClick={() => setShowAlerts(false)}
+                          className="fixed inset-0 bg-black/60 backdrop-blur-sm z-[55] lg:hidden"
                         />
-                      </motion.div>
+                        <motion.div
+                          initial={{ opacity: 0, x: 20 }}
+                          animate={{ opacity: 1, x: 0 }}
+                          exit={{ opacity: 0, x: 20 }}
+                          className={cn(
+                            "transition-all duration-500 z-[60]",
+                            "fixed top-20 right-4 left-4 bottom-4 lg:relative lg:top-0 lg:left-0 lg:right-0 lg:bottom-0 lg:col-span-4 lg:z-auto lg:h-[700px]"
+                          )}
+                        >
+                          <AlertPanel alerts={alerts} onClose={() => setShowAlerts(false)} />
+                        </motion.div>
+                      </>
                     )}
                   </AnimatePresence>
                 </div>
-
-                {/* Alerts Panel Overlay (Mobile) / Sidebar (Desktop) */}
-                <AnimatePresence>
-                  {showAlerts && (
-                    <>
-                      {/* Backdrop for mobile */}
-                      <motion.div
-                        initial={{ opacity: 0 }}
-                        animate={{ opacity: 1 }}
-                        exit={{ opacity: 0 }}
-                        onClick={() => setShowAlerts(false)}
-                        className="fixed inset-0 bg-black/60 backdrop-blur-sm z-[55] lg:hidden"
-                      />
-                      <motion.div
-                        initial={{ opacity: 0, x: 20 }}
-                        animate={{ opacity: 1, x: 0 }}
-                        exit={{ opacity: 0, x: 20 }}
-                        className={cn(
-                          "transition-all duration-500 z-[60]",
-                          "fixed top-20 right-4 left-4 bottom-4 lg:relative lg:top-0 lg:left-0 lg:right-0 lg:bottom-0 lg:col-span-4 lg:z-auto lg:h-[700px]"
-                        )}
-                      >
-                        <AlertPanel alerts={alerts} onClose={() => setShowAlerts(false)} />
-                      </motion.div>
-                    </>
-                  )}
-                </AnimatePresence>
               </div>
-            </div>
-          )}
-        </div>
+            )}
+          </div>
+        )}
       </main>
     </div>
   );

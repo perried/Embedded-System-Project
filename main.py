@@ -5,7 +5,7 @@ Telecom Equipment Room Monitor
 Continuously reads temperature/humidity (DHT11) and gas/smoke levels
 (MQ2 digital output) and controls actuators accordingly:
 
-    Fan (relay)  → ON when temp ≥ 27°C  OR  gas detected
+    Fan (relay)  → ON when temp ≥ threshold
     Buzzer       → ON when gas detected ONLY
 
 Run:  python main.py
@@ -132,8 +132,8 @@ def main():
             thresholds = get_thresholds()
             fan_threshold = thresholds.get('temp_fan_on', config.TEMP_FAN_ON)
 
-            # Fan: ON if temperature is high OR gas is detected
-            if (temp is not None and temp >= fan_threshold) or gas_detected:
+            # Fan: ON if temperature is high
+            if temp is not None and temp >= fan_threshold:
                 fan.turn_on()
             else:
                 fan.turn_off()

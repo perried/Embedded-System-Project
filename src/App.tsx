@@ -235,12 +235,15 @@ function Dashboard() {
       (Object.entries(site.sensors) as [SensorType, any][]).forEach(([type, sensor]) => {
         const isAlert = type === 'smoke' ? sensor.current === 1 : sensor.current > sensor.threshold;
         if (isAlert) {
+          const isCritical = type === 'smoke'
+            || (type === 'temperature' && sensor.criticalThreshold != null && sensor.current > sensor.criticalThreshold)
+            || (type !== 'temperature' && sensor.current > sensor.threshold);
           allAlerts.push({
             id: `alert-${site.id}-${type}`,
             siteId: site.id,
             siteName: site.name,
             type,
-            severity: (type === 'smoke' || sensor.current > sensor.threshold * 1.2) ? 'critical' : 'warning',
+            severity: isCritical ? 'critical' : 'warning',
             message: type === 'smoke'
               ? `SMOKE DETECTED at ${site.name}!`
               : `${type.charAt(0).toUpperCase() + type.slice(1)} at ${site.name} is ${sensor.current}${sensor.unit} — threshold: ${sensor.threshold}${sensor.unit}`,
@@ -434,6 +437,7 @@ function Dashboard() {
                               unit={selectedSite.sensors.temperature.unit}
                               history={selectedSite.sensors.temperature.history}
                               threshold={selectedSite.sensors.temperature.threshold}
+                              criticalThreshold={selectedSite.sensors.temperature.criticalThreshold}
                             />
                           </motion.div>
                         )}

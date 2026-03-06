@@ -9,7 +9,7 @@ const HISTORY_LIMIT = 100;
 
 // Default sensor display config — threshold used when site has no custom overrides
 const SENSOR_DEFAULTS = {
-  temperature: { threshold: 29.5, unit: '°C' },      // Warning threshold for display
+  temperature: { threshold: 38, criticalThreshold: 45, unit: '°C' },   // Warning / critical thresholds
   humidity:    { threshold: 70.0, unit: '%'  },       // Humidity warning level
   smoke:       { threshold: 0.5,  unit: 'digital'},   // MQ2 digital output threshold
 };
@@ -50,12 +50,17 @@ router.get('/', async (req, res) => {
           type === 'humidity' ? 'humidity_warning' :
           'smoke_critical'
         ];
-        sensors[type] = {
+        const sensorObj = {
           current:   history.length > 0 ? history[0].value : 0,
           history,
           threshold: siteThreshold ?? defaults.threshold,
           unit:      defaults.unit,
         };
+        // Add critical threshold for temperature
+        if (type === 'temperature') {
+          sensorObj.criticalThreshold = site.thresholds?.temp_critical ?? defaults.criticalThreshold;
+        }
+        sensors[type] = sensorObj;
       }
 
       return {

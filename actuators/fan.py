@@ -2,7 +2,7 @@
 Fan Actuator (Relay-controlled)
 ================================
 Controls an exhaust/cooling fan through a relay module.
-Activates on high temperature OR gas detection.
+Activates on high temperature.
 
 Wiring:
     Relay IN   → GPIO 27

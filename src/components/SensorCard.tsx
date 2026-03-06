@@ -31,6 +31,7 @@ interface SensorCardProps {
   unit: string;
   history: SensorReading[];
   threshold: number;
+  criticalThreshold?: number;
   className?: string;
 }
 
@@ -63,13 +64,16 @@ export const SensorCard: React.FC<SensorCardProps> = ({
   unit,
   history,
   threshold,
+  criticalThreshold,
   className,
 }) => {
   const isSmokeType = type === 'smoke';
   const smokeActive = isSmokeType && current === 1;
   const config = sensorConfig[type];
   const Icon = isSmokeType ? (smokeActive ? (config as any).alertIcon : config.icon) : config.icon;
-  const isAlert = isSmokeType ? smokeActive : current > threshold;
+  const isCritical = isSmokeType ? smokeActive : (criticalThreshold != null ? current > criticalThreshold : false);
+  const isWarning = !isCritical && !isSmokeType && current > threshold;
+  const isAlert = isCritical || isWarning || smokeActive;
 
   const stats = useMemo(() => {
     if (!history.length) return { min: 0, max: 0, avg: 0, trend: 'stable' };
@@ -88,7 +92,8 @@ export const SensorCard: React.FC<SensorCardProps> = ({
   return (
     <div className={cn(
       "bg-[var(--bg-card)] border border-[var(--border-subtle)] rounded-xl p-5 flex flex-col gap-4 transition-all hover:border-[var(--border-hover)] shadow-sm duration-300 relative overflow-hidden",
-      isAlert && "border-red-500/50 bg-red-500/5",
+      isCritical && "border-red-500/50 bg-red-500/5",
+      isWarning && "border-amber-500/50 bg-amber-500/5",
       smokeActive && "animate-[pulse_2s_infinite] border-red-500",
       className
     )}>
@@ -132,9 +137,9 @@ export const SensorCard: React.FC<SensorCardProps> = ({
           </div>
         </div>
         {isAlert && (
-          <div className="flex items-center gap-1 text-red-500">
+          <div className={cn("flex items-center gap-1", isCritical ? "text-red-500" : "text-amber-500")}>
             <AlertTriangle size={16} className={smokeActive ? "animate-pulse" : ""} />
-            <span className="text-[10px] font-bold uppercase">{smokeActive ? 'ALARM' : 'Critical'}</span>
+            <span className="text-[10px] font-bold uppercase">{smokeActive ? 'ALARM' : isCritical ? 'Critical' : 'Warning'}</span>
           </div>
         )}
       </div>
@@ -270,9 +275,9 @@ export const SensorCard: React.FC<SensorCardProps> = ({
         </span>
         <span className={cn(
           "text-[10px] uppercase font-bold",
-          isAlert ? "text-red-500" : "text-emerald-500"
+          isAlert ? (isCritical ? "text-red-500" : "text-amber-500") : "text-emerald-500"
         )}>
-          {isAlert ? (isSmokeType ? 'ALARM ACTIVE' : 'Critical Level') : 'Nominal'}
+          {isAlert ? (isSmokeType ? 'ALARM ACTIVE' : isCritical ? 'Critical Level' : 'Warning Level') : 'Nominal'}
         </span>
       </div>
     </div>

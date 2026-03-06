@@ -38,6 +38,7 @@ export interface SiteStatus {
       unit: string;              // Display unit ('°C')
       history: SensorReading[];  // Recent readings for chart
       threshold: number;         // Warning threshold for display
+      criticalThreshold?: number; // Critical threshold for display
     };
     humidity: {
       current: number;

@@ -49,7 +49,8 @@ export const MOCK_SITES: SiteStatus[] = [
         current: 24.5,
         unit: '°C',
         history: generateHistory(22, 2, 'temperature'),
-        threshold: 45,
+        threshold: 38,
+        criticalThreshold: 45,
       },
       humidity: {
         current: 45,
@@ -76,7 +77,8 @@ export const MOCK_SITES: SiteStatus[] = [
         current: 38.2,
         unit: '°C',
         history: generateHistory(32, 4, 'temperature'),
-        threshold: 45,
+        threshold: 38,
+        criticalThreshold: 45,
       },
       humidity: {
         current: 62,
@@ -103,7 +105,8 @@ export const MOCK_SITES: SiteStatus[] = [
         current: 52.1,
         unit: '°C',
         history: generateHistory(48, 10, 'temperature'),
-        threshold: 45,
+        threshold: 38,
+        criticalThreshold: 45,
       },
       humidity: {
         current: 30,

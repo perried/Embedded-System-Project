@@ -4,7 +4,6 @@
  * Root component for the TRSMS NOC Dashboard.
  *
  * Responsibilities:
- * - Authentication gate — shows Login page until user is signed in
  * - Fetches initial site data via REST (GET /api/sites) for history hydration
  * - Subscribes to Socket.IO events for real-time sensor data, site status, and threshold updates
  * - Manages global state: sites list, selected site, theme, alerts, smoke alarm
@@ -24,8 +23,6 @@ import {
   SiteStatusEvent,
   onThresholdsUpdated,
 } from './lib/socket';
-import { AuthProvider, useAuth } from './context/AuthContext';
-import Login from './pages/Login';
 import Sites from './pages/Sites';
 import { Sidebar } from './components/Sidebar';
 import { SensorCard } from './components/SensorCard';
@@ -39,50 +36,13 @@ import {
   Moon,
   Menu,
   SlidersHorizontal,
-  LogOut,
   Radio,
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 
-// ── Root export: wraps everything in AuthProvider ──
 export default function App() {
-  return (
-    <AuthProvider>
-      <AppInner />
-    </AuthProvider>
-  );
-}
-
-// ── Routes between Login and the Dashboard ──
-function AppInner() {
-  const { user, isLoading } = useAuth();
-  const [theme] = useState<'light' | 'dark'>(() =>
-    (localStorage.getItem('trsms_theme') as 'light' | 'dark') || 'dark'
-  );
-
-  useEffect(() => {
-    const root = window.document.documentElement;
-    root.classList.remove('light', 'dark');
-    root.classList.add(theme);
-  }, [theme]);
-
-  if (isLoading) {
-    return (
-      <div className="min-h-screen bg-[var(--bg-dashboard)] flex items-center justify-center">
-        <RefreshCw className="animate-spin text-emerald-500 w-8 h-8" />
-      </div>
-    );
-  }
-
-  return user ? <Dashboard /> : <Login />;
-}
-
-// ── Authenticated NOC Dashboard ──
-function Dashboard() {
-  const { user, logout } = useAuth();
   const [activePage, setActivePage] = useState<'dashboard' | 'sites'>('dashboard');
 
-  // ── Persist selected site and theme in localStorage ──
   const [sites, setSites] = useState<SiteStatus[]>([]);
   const [selectedSiteId, setSelectedSiteId] = useState<string>(() => {
     return localStorage.getItem('trsms_selected_site_id') || '';
@@ -100,7 +60,6 @@ function Dashboard() {
   const [showThresholds, setShowThresholds] = useState(false);
   const audioRef = useRef<HTMLAudioElement | null>(null);
 
-  // ── REST fetch for initial hydration (includes history data) ──
   const fetchSites = async () => {
     try {
       const response = await fetch(`${API_BASE_URL}/api/sites`);
@@ -124,7 +83,6 @@ function Dashboard() {
     }
   };
 
-  // ── Socket.IO real-time updates ──
   useEffect(() => {
     fetchSites();
 
@@ -311,7 +269,7 @@ function Dashboard() {
               <span className="text-sm sm:text-base font-bold text-[var(--text-primary)] truncate leading-tight">
                 {activePage === 'sites' ? 'Sites' : selectedSite?.name || 'No Sites'}
               </span>
-              {activePage === 'dashboard' && (
+              {activePage === 'dashboard' && selectedSite && (
                 <div className="flex items-center gap-2">
                   <div className={cn(
                     "w-1.5 h-1.5 rounded-full shrink-0",
@@ -335,9 +293,6 @@ function Dashboard() {
           </div>
 
           <div className="flex items-center gap-2 sm:gap-4">
-            <span className="hidden sm:block text-[10px] text-[var(--text-muted)] truncate max-w-[120px]" title={user?.full_name}>
-              {user?.full_name}
-            </span>
             <button
               onClick={toggleTheme}
               className="p-2 rounded-full hover:bg-[var(--border-subtle)] text-[var(--text-secondary)] transition-colors"
@@ -382,13 +337,6 @@ function Dashboard() {
                 </button>
               </>
             )}
-            <button
-              onClick={logout}
-              className="p-2 rounded-full hover:bg-red-500/10 hover:text-red-400 text-[var(--text-secondary)] transition-colors"
-              title="Sign out"
-            >
-              <LogOut size={18} />
-            </button>
           </div>
         </header>
 
@@ -423,7 +371,6 @@ function Dashboard() {
                       !showAlerts && "lg:grid-cols-3"
                     )}>
                       <AnimatePresence mode="wait">
-                        {/* Temperature */}
                         {selectedSite.sensors?.temperature && (
                           <motion.div
                             key={`${selectedSiteId}-temp`}
@@ -445,7 +392,6 @@ function Dashboard() {
                           </motion.div>
                         )}
 
-                        {/* Humidity */}
                         {selectedSite.sensors?.humidity && (
                           <motion.div
                             key={`${selectedSiteId}-hum`}
@@ -465,7 +411,6 @@ function Dashboard() {
                           </motion.div>
                         )}
 
-                        {/* Smoke */}
                         {selectedSite.sensors?.smoke && (
                           <motion.div
                             key={`${selectedSiteId}-smoke`}
@@ -505,11 +450,10 @@ function Dashboard() {
                     </AnimatePresence>
                   </div>
 
-                  {/* Alerts Panel Overlay (Mobile) / Sidebar (Desktop) */}
+                  {/* Alerts Panel */}
                   <AnimatePresence>
                     {showAlerts && (
                       <>
-                        {/* Backdrop for mobile */}
                         <motion.div
                           initial={{ opacity: 0 }}
                           animate={{ opacity: 1 }}

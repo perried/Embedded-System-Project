@@ -18,8 +18,6 @@ import path from 'path';
 import { fileURLToPath } from 'url';
 import ingestRouter  from './routes/ingest.js';
 import sitesRouter   from './routes/sites.js';
-import authRouter    from './routes/auth.js';
-import usersRouter   from './routes/users.js';
 import initPiHandler from './socket/piHandler.js';
 import initDashboardHandler from './socket/dashboardHandler.js';
 
@@ -58,8 +56,6 @@ app.use(express.json());   // Parse JSON request bodies
 // ── REST API Routes ──
 app.use('/api/ingest',   ingestRouter);   // POST - Pi sensor data (legacy HTTP fallback)
 app.use('/api/sites',    sitesRouter);    // CRUD - Site management + dashboard hydration
-app.use('/api/auth',     authRouter);     // POST - Login / Register
-app.use('/api/users',    usersRouter);    // GET  - Current user profile
 
 // Health check endpoint (used by Docker healthcheck / load balancers)
 app.get('/health', (_req, res) => res.json({ status: 'ok' }));

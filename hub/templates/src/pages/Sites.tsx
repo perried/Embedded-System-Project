@@ -7,7 +7,6 @@
 
 import React, { useState, useEffect, useCallback } from 'react';
 import { API_BASE_URL } from '../constants';
-import { useAuth } from '../context/AuthContext';
 import { motion, AnimatePresence } from 'motion/react';
 import {
     Radio, Plus, Trash2, Loader2, MapPin, Edit2, Check, X,
@@ -31,7 +30,6 @@ const STATUS_COLORS: Record<string, string> = {
 };
 
 export default function Sites() {
-    const { token } = useAuth();
     const [sites, setSites] = useState<Site[]>([]);
     const [loading, setLoading] = useState(true);
     const [showForm, setShowForm] = useState(false);
@@ -43,7 +41,7 @@ export default function Sites() {
     const [editingId, setEditingId] = useState<string | null>(null);
     const [editForm, setEditForm] = useState({ name: '', location: '' });
 
-    const authHeaders = { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' };
+    const jsonHeaders = { 'Content-Type': 'application/json' };
 
     const fetchSites = useCallback(async () => {
         setLoading(true);
@@ -65,7 +63,7 @@ export default function Sites() {
         try {
             const res = await fetch(`${API_BASE_URL}/api/sites`, {
                 method: 'POST',
-                headers: authHeaders,
+                headers: jsonHeaders,
                 body: JSON.stringify(form),
             });
             const data = await res.json();
@@ -89,7 +87,7 @@ export default function Sites() {
         try {
             await fetch(`${API_BASE_URL}/api/sites/${id}`, {
                 method: 'PUT',
-                headers: authHeaders,
+                headers: jsonHeaders,
                 body: JSON.stringify(editForm),
             });
             setSites(prev => prev.map(s => s.id === id ? { ...s, ...editForm } : s));
@@ -99,7 +97,7 @@ export default function Sites() {
 
     const handleDelete = async (id: string) => {
         if (!confirm(`Delete site "${id}" and all its sensor history?`)) return;
-        await fetch(`${API_BASE_URL}/api/sites/${id}`, { method: 'DELETE', headers: authHeaders });
+        await fetch(`${API_BASE_URL}/api/sites/${id}`, { method: 'DELETE', headers: jsonHeaders });
         setSites(prev => prev.filter(s => s.id !== id));
     };
 

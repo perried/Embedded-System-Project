@@ -34,7 +34,6 @@ services:
       DB_NAME: ${DB_NAME:-trsms}
       DB_USER: ${DB_USER:-trsms}
       DB_PASSWORD: ${DB_PASSWORD:?Set DB_PASSWORD in .env}
-      JWT_SECRET: ${JWT_SECRET:-trsms-default-secret}
 
 volumes:
   pg_data:

@@ -1,7 +1,6 @@
 import express from 'express';
 import db from '../db.js';
 import { getConnectedSiteIds } from '../socket/piHandler.js';
-import { authenticateToken } from '../middleware/auth.js';
 
 const router = express.Router();
 
@@ -82,7 +81,7 @@ router.get('/', async (req, res) => {
  * POST /api/sites
  * Manually register a new site.
  */
-router.post('/', authenticateToken, async (req, res) => {
+router.post('/', async (req, res) => {
   const { id, name, location } = req.body;
 
   if (!id || !name) {
@@ -108,7 +107,7 @@ router.post('/', authenticateToken, async (req, res) => {
  * PUT /api/sites/:id
  * Update a site's name and/or location.
  */
-router.put('/:id', authenticateToken, async (req, res) => {
+router.put('/:id', async (req, res) => {
   const { id } = req.params;
   const { name, location } = req.body;
 
@@ -130,7 +129,7 @@ router.put('/:id', authenticateToken, async (req, res) => {
  * DELETE /api/sites/:id
  * Delete a site and its sensor history.
  */
-router.delete('/:id', authenticateToken, async (req, res) => {
+router.delete('/:id', async (req, res) => {
   const { id } = req.params;
 
   try {

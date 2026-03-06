@@ -6,8 +6,8 @@ via a GPIO pin. The gas detection threshold is set by the
 potentiometer on the MQ2 module board.
 
 DO behaviour:
-    - LOW  (0) → gas/smoke concentration ABOVE threshold (detected)
-    - HIGH (1) → gas/smoke concentration BELOW threshold (normal)
+    - HIGH (1) → gas/smoke concentration ABOVE threshold (detected)
+    - LOW  (0) → gas/smoke concentration BELOW threshold (normal)
 
 Wiring:
     MQ2 VCC  → 5V
@@ -37,9 +37,9 @@ class MQ2Sensor:
         dict  {"gas_detected": bool}
               gas_detected : True when DO is LOW (gas above threshold)
         """
-        # DO is active-LOW: LOW = gas detected, HIGH = normal
+        # DO is active-HIGH: HIGH = gas detected, LOW = normal
         state = GPIO.input(self._pin)
-        gas_detected = state == GPIO.LOW
+        gas_detected = state == GPIO.HIGH
         return {"gas_detected": gas_detected}
 
     def cleanup(self):

@@ -97,14 +97,8 @@ def main():
     buzzer = Buzzer()
     lcd = LCDDisplay()
 
-    # ── Start Socket.IO Transmitter (background thread) ──────
-    transmitter = SocketTransmitter(simulate=False)
-    try:
-        transmitter.start()
-        logger.info("Socket.IO transmitter started (background thread)")
-    except Exception as e:
-        logger.error(f"Failed to start transmitter: {e}")
-        transmitter = None
+    # Transmitter starts after first sensor read (avoids race condition on boot)
+    transmitter = None
 
     lcd.show_message("TERMS Running",
                      "--------------------",
@@ -127,6 +121,16 @@ def main():
             # Write sensor data to /tmp/sensor_data.json for the transmitter thread to read
             write_sensor_data(temp, humidity, gas_detected)
 
+            # ── Start transmitter after first successful sensor write ──
+            if transmitter is None:
+                transmitter = SocketTransmitter(simulate=False)
+                try:
+                    transmitter.start()
+                    logger.info("Socket.IO transmitter started (background thread)")
+                except Exception as e:
+                    logger.error(f"Failed to start transmitter: {e}")
+                    transmitter = None
+
             # ── Actuator logic ────────────────────────────────────
             # Fetch latest thresholds — may have been updated remotely from dashboard
             thresholds = get_thresholds()
@@ -140,7 +144,8 @@ def main():
 
             # Buzzer: ON for gas/smoke ONLY
             if gas_detected:
-                buzzer.beep(on_time=0.5, off_time=0.5)
+                if not buzzer.is_active:
+                    buzzer.beep(on_time=0.5, off_time=0.5)
             else:
                 buzzer.turn_off()
 

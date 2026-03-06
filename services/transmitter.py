@@ -128,17 +128,27 @@ class SocketTransmitter:
     def _emit_loop(self):
         """Background loop that emits sensor data at the configured interval."""
         cycle = 0
+        waiting_logged = False
         while self._running:
             cycle += 1
             try:
                 if not self.sio.connected:
+                    if not waiting_logged:
+                        logger.warning("[TRANSMITTER] Waiting for socket reconnection...")
+                        waiting_logged = True
                     time.sleep(1)
                     continue
+                waiting_logged = False
 
                 if self.simulate:
                     values = simulate_sensor_data()
                 else:
-                    values = read_sensor_data()
+                    try:
+                        values = read_sensor_data()
+                    except RuntimeError as e:
+                        logger.warning(f"[{time.strftime('%H:%M:%S')}] #{cycle:04d} SKIP — {e}")
+                        time.sleep(INTERVAL_SECONDS)
+                        continue
 
                 self.sio.emit('sensor:data', {
                     'siteId': SITE_ID,
@@ -153,8 +163,6 @@ class SocketTransmitter:
                     f"smoke={values['smoke']}"
                 )
 
-            except RuntimeError as e:
-                logger.error(f"[{time.strftime('%H:%M:%S')}] #{cycle:04d} ERROR — {e}")
             except Exception as e:
                 logger.error(f"[{time.strftime('%H:%M:%S')}] #{cycle:04d} UNEXPECTED — {e}")
 

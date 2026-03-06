@@ -113,7 +113,7 @@ export default function Sites() {
                         </div>
                         <div>
                             <h2 className="text-lg font-bold text-[var(--text-primary)]">Sites</h2>
-                            <p className="text-xs text-[var(--text-muted)]">Registered monitoring sites — auto-populated when a Raspberry Pi connects</p>
+                            <p className="text-xs text-[var(--text-muted)]">Registered monitoring sites — add a site before connecting its Raspberry Pi</p>
                         </div>
                     </div>
                     <button
@@ -181,7 +181,7 @@ export default function Sites() {
                     <div className="text-center py-16 text-[var(--text-muted)]">
                         <Radio className="mx-auto mb-3 opacity-30" size={36} />
                         <p className="text-sm">No sites registered yet.</p>
-                        <p className="text-xs mt-1 opacity-60">Sites appear automatically when a Raspberry Pi connects, or you can register one manually above.</p>
+                        <p className="text-xs mt-1 opacity-60">Register a site above with the same Site ID used in your Pi's config. The Pi will connect once the site exists.</p>
                     </div>
                 ) : (
                     <div className="bg-[var(--bg-card)] border border-[var(--border-subtle)] rounded-xl overflow-hidden">

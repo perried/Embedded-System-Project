@@ -132,7 +132,10 @@ export const Sidebar: React.FC<SidebarProps> = ({
                   <Clock size={10} />
                   <span>
                     {(() => {
-                      const date = new Date(site.lastUpdate);
+                      const ts = site.lastUpdate;
+                      if (!ts) return 'No data yet';
+                      const date = new Date(ts);
+                      if (isNaN(date.getTime())) return 'No data yet';
                       const today = new Date();
                       const isToday = date.getDate() === today.getDate() &&
                         date.getMonth() === today.getMonth() &&

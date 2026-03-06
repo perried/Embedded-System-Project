@@ -9,11 +9,10 @@
  * - Subscribes to Socket.IO events for real-time sensor data, site status, and threshold updates
  * - Manages global state: sites list, selected site, theme, alerts, smoke alarm
  * - Renders the sidebar, sensor cards, alert panel, threshold editor, and alarm banner
- * - Provides navigation to the Shippers management page
  */
 
 import React, { useState, useEffect, useMemo, useRef } from 'react';
-import { MOCK_SITES, API_BASE_URL } from './constants';
+import { API_BASE_URL } from './constants';
 import { SiteStatus, Alert, SensorType } from './types';
 import { cn } from './lib/utils';
 import {
@@ -27,7 +26,6 @@ import {
 } from './lib/socket';
 import { AuthProvider, useAuth } from './context/AuthContext';
 import Login from './pages/Login';
-import Shippers from './pages/Shippers';
 import Sites from './pages/Sites';
 import { Sidebar } from './components/Sidebar';
 import { SensorCard } from './components/SensorCard';
@@ -42,6 +40,7 @@ import {
   Menu,
   SlidersHorizontal,
   LogOut,
+  Radio,
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 
@@ -81,7 +80,7 @@ function AppInner() {
 // ── Authenticated NOC Dashboard ──
 function Dashboard() {
   const { user, logout } = useAuth();
-  const [activePage, setActivePage] = useState<'dashboard' | 'shippers' | 'sites'>('dashboard');
+  const [activePage, setActivePage] = useState<'dashboard' | 'sites'>('dashboard');
 
   // ── Persist selected site and theme in localStorage ──
   const [sites, setSites] = useState<SiteStatus[]>([]);
@@ -218,7 +217,8 @@ function Dashboard() {
   const toggleTheme = () => setTheme(prev => prev === 'light' ? 'dark' : 'light');
 
   const selectedSite = useMemo(() => {
-    const site = sites.find(s => s.id === selectedSiteId) || sites[0] || MOCK_SITES[0];
+    const site = sites.find(s => s.id === selectedSiteId) || sites[0];
+    if (!site) return null;
     const isOffline = site.connected === false ||
       (site.connected === undefined && site.lastUpdate ? (Date.now() - site.lastUpdate) > 5 * 60 * 1000 : false);
     return { ...site, status: (isOffline ? 'offline' : site?.status || 'offline') as SiteStatus['status'] };
@@ -309,7 +309,7 @@ function Dashboard() {
             </button>
             <div className="flex flex-col sm:flex-row sm:items-center gap-0 sm:gap-3 min-w-0">
               <span className="text-sm sm:text-base font-bold text-[var(--text-primary)] truncate leading-tight">
-                {activePage === 'shippers' ? 'Shippers' : activePage === 'sites' ? 'Sites' : selectedSite.name}
+                {activePage === 'sites' ? 'Sites' : selectedSite?.name || 'No Sites'}
               </span>
               {activePage === 'dashboard' && (
                 <div className="flex items-center gap-2">
@@ -393,10 +393,17 @@ function Dashboard() {
         </header>
 
         {/* Content */}
-        {activePage === 'shippers' ? (
-          <Shippers />
-        ) : activePage === 'sites' ? (
+        {activePage === 'sites' ? (
           <Sites />
+        ) : !selectedSite ? (
+          <div className="flex-1 flex items-center justify-center">
+            <div className="text-center space-y-4">
+              <Radio className="w-16 h-16 text-[var(--text-muted)] mx-auto opacity-30" />
+              <h2 className="text-xl font-bold text-[var(--text-muted)]">No Sites Connected</h2>
+              <p className="text-sm text-[var(--text-muted)] opacity-60">Connect a Raspberry Pi or add a site manually from the Sites page.</p>
+              <button onClick={() => setActivePage('sites')} className="px-4 py-2 bg-emerald-500 text-white rounded-lg text-sm font-medium hover:bg-emerald-600 transition-colors">Manage Sites</button>
+            </div>
+          </div>
         ) : (
           <div className="flex-1 overflow-y-auto p-4 lg:p-8">
             {loading ? (

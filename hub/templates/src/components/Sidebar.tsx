@@ -13,7 +13,7 @@
 
 import React from 'react';
 import { SiteStatus } from '../types';
-import { MapPin, Clock, X, Truck, Radio } from 'lucide-react';
+import { MapPin, Clock, X, Radio } from 'lucide-react';
 import { format } from 'date-fns';
 import { motion, AnimatePresence } from 'motion/react';
 import { cn } from '../lib/utils';
@@ -161,18 +161,6 @@ export const Sidebar: React.FC<SidebarProps> = ({
           >
             <Radio size={16} />
             Sites
-          </button>
-          <button
-            onClick={() => onNavigate?.('shippers')}
-            className={cn(
-              "w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-left text-sm transition-all",
-              activePage === 'shippers'
-                ? "bg-emerald-500/10 text-emerald-500 font-medium"
-                : "text-[var(--text-secondary)] hover:bg-[var(--border-subtle)] hover:text-[var(--text-primary)]"
-            )}
-          >
-            <Truck size={16} />
-            Shippers
           </button>
         </div>
 

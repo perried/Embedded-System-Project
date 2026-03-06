@@ -73,6 +73,7 @@ export default function App() {
       if (smokeAlertActive) {
         setHasSmokeAlert(true);
         setSmokeDismissed(false);
+        setIsSilenced(false);
       }
 
       if (data.length > 0 && !localStorage.getItem('trsms_selected_site_id')) {
@@ -117,6 +118,7 @@ export default function App() {
         if (smokeActive) {
           setHasSmokeAlert(true);
           setSmokeDismissed(false);
+          setIsSilenced(false);
         }
 
         return updated;

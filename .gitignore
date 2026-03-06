@@ -19,3 +19,7 @@ Thumbs.db
 
 # Docker volumes (never commit)
 pg_data/
+
+# Build
+dist/
+package-lock.json

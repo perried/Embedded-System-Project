@@ -54,14 +54,14 @@ export interface SiteStatus {
   };
 }
 
-/** Active alert generated from threshold comparison (client-side only) */
+/** Alert record from the database */
 export interface Alert {
-  id: string;              // Composite key: 'alert-{siteId}-{sensorType}'
-  siteId: string;
-  siteName: string;
-  type: SensorType;
+  id: number;
+  site_id: string;
+  site_name: string;
+  sensor_type: SensorType;
   severity: 'warning' | 'critical';
-  message: string;         // Human-readable alert description
-  timestamp: number;       // When the alert was generated (Unix ms)
-  resolved: boolean;       // Whether the alert has been acknowledged
+  message: string;
+  created_at: number;      // Unix ms when the alert was created
+  resolved_at: number | null; // Unix ms when resolved, or null if still open
 }

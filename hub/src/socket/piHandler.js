@@ -6,7 +6,7 @@
  */
 
 import db from '../db.js';
-import { deriveStatus, resolveThresholds } from '../services/statusService.js';
+import { deriveStatus, resolveThresholds, DEFAULT_THRESHOLDS } from '../services/statusService.js';
 import { sendPushNotification } from '../services/notificationService.js';
 
 // In-memory map of connected Pi devices: siteId → socket.id
@@ -169,6 +169,47 @@ export default function initPiHandler(nsp, dashboardNsp) {
           sendPushNotification(siteName, status, sensors).catch(err => {
             console.error('[NOTIFICATION] Failed:', err.message);
           });
+        }
+
+        // ── Persist alerts in DB ──
+        try {
+          const t = resolveThresholds(siteThresholds);
+          const siteName = siteData?.name || siteId;
+          const temp  = sensors.temperature ?? 0;
+          const humid = sensors.humidity ?? 0;
+          const smoke = sensors.smoke ?? sensors.gas ?? 0;
+
+          // Determine which sensors are currently alerting
+          const activeAlerts = [];
+          if (smoke > t.smoke_critical)   activeAlerts.push({ type: 'smoke',       severity: 'critical', message: `SMOKE DETECTED at ${siteName}!` });
+          if (temp > t.temp_critical)     activeAlerts.push({ type: 'temperature', severity: 'critical', message: `Temperature critical at ${siteName}: ${temp}°C (threshold: ${t.temp_critical}°C)` });
+          if (temp > t.temp_warning && temp <= t.temp_critical) activeAlerts.push({ type: 'temperature', severity: 'warning', message: `Temperature warning at ${siteName}: ${temp}°C (threshold: ${t.temp_warning}°C)` });
+          if (humid > t.humidity_warning) activeAlerts.push({ type: 'humidity',    severity: 'warning',  message: `Humidity warning at ${siteName}: ${humid}% (threshold: ${t.humidity_warning}%)` });
+
+          const alertTypes = activeAlerts.map(a => a.type);
+
+          // Resolve alerts for sensor types that are no longer alerting
+          await db.query(
+            `UPDATE telco_alerts SET resolved_at = $1
+             WHERE site_id = $2 AND resolved_at IS NULL AND sensor_type != ALL($3::text[])`,
+            [ts, siteId, alertTypes]
+          );
+
+          // Insert new alerts (only if no open alert exists for this site+sensor)
+          for (const alert of activeAlerts) {
+            const { rowCount } = await db.query(
+              `SELECT 1 FROM telco_alerts WHERE site_id = $1 AND sensor_type = $2 AND resolved_at IS NULL LIMIT 1`,
+              [siteId, alert.type]
+            );
+            if (rowCount === 0) {
+              await db.query(
+                `INSERT INTO telco_alerts (site_id, sensor_type, severity, message, created_at) VALUES ($1, $2, $3, $4, $5)`,
+                [siteId, alert.type, alert.severity, alert.message, ts]
+              );
+            }
+          }
+        } catch (alertErr) {
+          console.error(`[PI] Error persisting alerts for ${siteId}:`, alertErr.message);
         }
       } catch (err) {
         console.error(`[PI] Error processing sensor data from ${siteId}:`, err.message);

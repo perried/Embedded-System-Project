@@ -20,6 +20,7 @@ interface AlarmBannerProps {
   active: boolean;
   isSilenced: boolean;
   onSilence: () => void;
+  onDismiss: () => void;
   siteName?: string;
 }
 
@@ -27,6 +28,7 @@ export const AlarmBanner: React.FC<AlarmBannerProps> = ({
   active, 
   isSilenced, 
   onSilence,
+  onDismiss,
   siteName 
 }) => {
   return (
@@ -74,6 +76,14 @@ export const AlarmBanner: React.FC<AlarmBannerProps> = ({
                 </button>
               )}
               
+              <button
+                onClick={onDismiss}
+                className="flex items-center gap-2 px-4 py-2 bg-red-900 text-white hover:bg-red-800 rounded-lg shadow-sm transition-all active:scale-95 text-[11px] font-bold uppercase tracking-wider border border-red-400/30"
+              >
+                <Shield className="w-4 h-4" />
+                Dismiss
+              </button>
+
               <div className="hidden md:flex items-center gap-2 px-3 py-1.5 bg-white/10 rounded-lg text-[10px] font-medium border border-white/10">
                 <AlertTriangle className="w-3.5 h-3.5" />
                 Logic: MQ2 Digital Output

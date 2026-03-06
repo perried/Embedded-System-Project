@@ -12,7 +12,7 @@
 
 import React, { useState, useEffect, useMemo, useRef } from 'react';
 import { API_BASE_URL } from './constants';
-import { SiteStatus, Alert, SensorType } from './types';
+import { SiteStatus, Alert } from './types';
 import { cn } from './lib/utils';
 import {
   onSiteData,
@@ -56,8 +56,10 @@ export default function App() {
   const [showAlerts, setShowAlerts] = useState(false);
 
   const [hasSmokeAlert, setHasSmokeAlert] = useState(false);
+  const [smokeDismissed, setSmokeDismissed] = useState(false);
   const [isSilenced, setIsSilenced] = useState(false);
   const [showThresholds, setShowThresholds] = useState(false);
+  const [alerts, setAlerts] = useState<Alert[]>([]);
   const audioRef = useRef<HTMLAudioElement | null>(null);
 
   const fetchSites = async () => {
@@ -68,8 +70,10 @@ export default function App() {
       setSites(sortedData);
 
       const smokeAlertActive = sortedData.some(site => site.sensors.smoke?.current === 1);
-      if (!smokeAlertActive) setIsSilenced(false);
-      setHasSmokeAlert(smokeAlertActive);
+      if (smokeAlertActive) {
+        setHasSmokeAlert(true);
+        setSmokeDismissed(false);
+      }
 
       if (data.length > 0 && !localStorage.getItem('trsms_selected_site_id')) {
         const firstId = data[0].id;
@@ -110,8 +114,10 @@ export default function App() {
         });
 
         const smokeActive = updated.some(s => s.sensors.smoke?.current === 1);
-        if (!smokeActive) setIsSilenced(false);
-        setHasSmokeAlert(smokeActive);
+        if (smokeActive) {
+          setHasSmokeAlert(true);
+          setSmokeDismissed(false);
+        }
 
         return updated;
       });
@@ -157,8 +163,23 @@ export default function App() {
     localStorage.setItem('trsms_theme', theme);
   }, [theme]);
 
+  // Fetch alert history periodically
   useEffect(() => {
-    if (hasSmokeAlert && !isSilenced) {
+    const fetchAlerts = async () => {
+      try {
+        const res = await fetch(`${API_BASE_URL}/api/alerts?limit=50`);
+        const data = await res.json();
+        setAlerts(data);
+      } catch { /* ignore */ }
+    };
+    fetchAlerts();
+    const interval = setInterval(fetchAlerts, 10000);
+    return () => clearInterval(interval);
+  }, []);
+
+  useEffect(() => {
+    const showBanner = hasSmokeAlert && !smokeDismissed;
+    if (showBanner && !isSilenced) {
       if (!audioRef.current) {
         audioRef.current = new Audio('https://assets.mixkit.co/active_storage/sfx/2569/2569-preview.mp3');
         audioRef.current.loop = true;
@@ -170,7 +191,12 @@ export default function App() {
         audioRef.current.currentTime = 0;
       }
     }
-  }, [hasSmokeAlert, isSilenced]);
+  }, [hasSmokeAlert, isSilenced, smokeDismissed]);
+
+  const handleDismissBanner = () => {
+    setSmokeDismissed(true);
+    setIsSilenced(true);
+  };
 
   const toggleTheme = () => setTheme(prev => prev === 'light' ? 'dark' : 'light');
 
@@ -186,30 +212,7 @@ export default function App() {
     return sites.find(site => site.sensors.smoke?.current === 1)?.name;
   }, [sites]);
 
-  const alerts = useMemo(() => {
-    const allAlerts: Alert[] = [];
-    if (!sites.length) return allAlerts;
-    sites.forEach(site => {
-      (Object.entries(site.sensors) as [SensorType, any][]).forEach(([type, sensor]) => {
-        const isAlert = type === 'smoke' ? sensor.current === 1 : sensor.current > sensor.threshold;
-        if (isAlert) {
-          allAlerts.push({
-            id: `alert-${site.id}-${type}`,
-            siteId: site.id,
-            siteName: site.name,
-            type,
-            severity: (type === 'smoke' || sensor.current > sensor.threshold * 1.2) ? 'critical' : 'warning',
-            message: type === 'smoke'
-              ? `SMOKE DETECTED at ${site.name}!`
-              : `${type.charAt(0).toUpperCase() + type.slice(1)} at ${site.name} is ${sensor.current}${sensor.unit} — threshold: ${sensor.threshold}${sensor.unit}`,
-            timestamp: Date.now() - Math.random() * 3600000,
-            resolved: false,
-          });
-        }
-      });
-    });
-    return allAlerts.sort((a, b) => b.timestamp - a.timestamp);
-  }, [sites]);
+  const openAlertCount = useMemo(() => alerts.filter(a => !a.resolved_at).length, [alerts]);
 
   const handleRefresh = () => {
     setIsRefreshing(true);
@@ -250,9 +253,10 @@ export default function App() {
 
       <main className="flex-1 flex flex-col min-w-0 overflow-hidden relative">
         <AlarmBanner
-          active={hasSmokeAlert}
+          active={hasSmokeAlert && !smokeDismissed}
           isSilenced={isSilenced}
           onSilence={() => setIsSilenced(true)}
+          onDismiss={handleDismissBanner}
           siteName={alertingSite}
         />
 
@@ -331,7 +335,7 @@ export default function App() {
                   title="Alerts"
                 >
                   <Bell size={18} />
-                  {alerts.length > 0 && (
+                  {openAlertCount > 0 && (
                     <span className="absolute top-2 right-2 w-2 h-2 bg-red-500 rounded-full border-2 border-[var(--bg-header)]" />
                   )}
                 </button>

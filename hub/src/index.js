@@ -18,6 +18,7 @@ import path from 'path';
 import { fileURLToPath } from 'url';
 import ingestRouter  from './routes/ingest.js';
 import sitesRouter   from './routes/sites.js';
+import alertsRouter  from './routes/alerts.js';
 import initPiHandler from './socket/piHandler.js';
 import initDashboardHandler from './socket/dashboardHandler.js';
 
@@ -56,6 +57,7 @@ app.use(express.json());   // Parse JSON request bodies
 // ── REST API Routes ──
 app.use('/api/ingest',   ingestRouter);   // POST - Pi sensor data (legacy HTTP fallback)
 app.use('/api/sites',    sitesRouter);    // CRUD - Site management + dashboard hydration
+app.use('/api/alerts',   alertsRouter);   // GET  - Alert history
 
 // Health check endpoint (used by Docker healthcheck / load balancers)
 app.get('/health', (_req, res) => res.json({ status: 'ok' }));
